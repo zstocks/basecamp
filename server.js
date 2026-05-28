@@ -3,6 +3,8 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, extname } from 'node:path';
+import * as habitsRepo from './src/habits.js';
+import * as logsRepo from './src/habitLogs.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
@@ -15,32 +17,92 @@ const MIME = {
   '.json': 'application/json',
 };
 
+// --- helpers ---
+
+async function readJsonBody(req) {
+  const chunks = [];
+  for await (const chunk of req) chunks.push(chunk);
+  const text = Buffer.concat(chunks).toString('utf8');
+  if (!text) return {};
+  return JSON.parse(text);
+}
+
+function sendJson(res, status, body) {
+  res.writeHead(status, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(body));
+}
+
+// --- API ---
+
+async function handleApi(req, res, pathname) {
+  // GET /api/habits
+  if (pathname === '/api/habits' && req.method === 'GET') {
+    return sendJson(res, 200, habitsRepo.listHabits());
+  }
+  // POST /api/habits
+  if (pathname === '/api/habits' && req.method === 'POST') {
+    const body = await readJsonBody(req);
+    return sendJson(res, 201, habitsRepo.createHabit(body));
+  }
+  // PUT /api/habits/:id
+  const habitMatch = pathname.match(/^\/api\/habits\/(\d+)$/);
+  if (habitMatch && req.method === 'PUT') {
+    const body = await readJsonBody(req);
+    const habit = habitsRepo.updateHabit(Number(habitMatch[1]), body);
+    if (!habit) return sendJson(res, 404, { error: 'Habit not found' });
+    return sendJson(res, 200, habit);
+  }
+
+  // GET /api/habit-logs?date=YYYY-MM-DD
+  if (pathname === '/api/habit-logs' && req.method === 'GET') {
+    const date = new URL(req.url, 'http://x').searchParams.get('date');
+    if (!date) return sendJson(res, 400, { error: 'date query param required' });
+    return sendJson(res, 200, logsRepo.getLogsForDate(date));
+  }
+  // PUT /api/habit-logs
+  if (pathname === '/api/habit-logs' && req.method === 'PUT') {
+    const body = await readJsonBody(req);
+    return sendJson(res, 200, logsRepo.setHabitLog(body));
+  }
+
+  return sendJson(res, 404, { error: 'Not found' });
+}
+
+// --- server ---
+
 const server = createServer(async (req, res) => {
-  // Only safe, read-only methods for now
-  if (req.method !== 'GET' && req.method !== 'HEAD') {
-    res.writeHead(405).end('Method Not Allowed');
-    return;
-  }
-
-  // Health check — same shape your other apps use
-  if (req.url === '/health') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ status: 'ok', app: 'basecamp' }));
-    return;
-  }
-
-  // Static file serving out of public/
-  const path = req.url === '/' ? '/index.html' : req.url;
-  if (path.includes('..')) {            // crude path-traversal guard
-    res.writeHead(403).end('Forbidden');
-    return;
-  }
   try {
+    const pathname = req.url.split('?')[0];
+
+    if (pathname.startsWith('/api/')) {
+      return await handleApi(req, res, pathname);
+    }
+
+    if (pathname === '/health') {
+      return sendJson(res, 200, { status: 'ok', app: 'basecamp' });
+    }
+
+    // Static (GET/HEAD only)
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      res.writeHead(405).end('Method Not Allowed');
+      return;
+    }
+    const path = pathname === '/' ? '/index.html' : pathname;
+    if (path.includes('..')) {
+      res.writeHead(403).end('Forbidden');
+      return;
+    }
     const file = await readFile(join(PUBLIC_DIR, path));
     res.writeHead(200, { 'Content-Type': MIME[extname(path)] || 'application/octet-stream' });
     res.end(req.method === 'HEAD' ? undefined : file);
-  } catch {
-    res.writeHead(404).end('Not Found');
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      res.writeHead(404).end('Not Found');
+    } else {
+      const status = err.status || 500;
+      if (status === 500) console.error(err);
+      sendJson(res, status, { error: err.message });
+    }
   }
 });
 
