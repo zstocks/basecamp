@@ -1,5 +1,67 @@
 <!doctype html>
-<meta charset="utf-8">
-<title>Basecamp</title>
-<h1>Basecamp</h1>
-<p>Coming together, one step at a time.</p>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Basecamp</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header>
+    <h1>Basecamp</h1>
+    <div class="streak">
+      <span class="streak-number" id="streak-number">0</span>
+      <span class="streak-label">day streak</span>
+    </div>
+    <button id="logout-btn" class="ghost">Log out</button>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2 id="today-date">Today</h2>
+      <ul class="habits" id="habits-list"></ul>
+      <p class="empty" id="habits-empty" hidden>
+        No habits scheduled for today. Use the API to add some — the management UI lands in step 7.
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>Body</h2>
+      <div class="metrics-row">
+        <div class="metric">
+          <label for="weight-input">Weight (lb)</label>
+          <input type="number" id="weight-input" step="0.1" placeholder="—">
+        </div>
+        <div class="metric">
+          <label>Water (ml)</label>
+          <div>
+            <span class="water-current" id="water-current">0</span><span class="water-target" id="water-target"></span>
+            <div class="water-buttons">
+              <button data-amount="250">+250</button>
+              <button data-amount="500">+500</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Feeling the pull?</h2>
+      <p class="hint">Tap what you did to push through.</p>
+      <div class="emergency">
+        <button data-response="bag">Hit the bag</button>
+        <button data-response="walk">Take a walk</button>
+        <button data-response="water">Drink water</button>
+        <button data-response="other">Something else</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>This week</h2>
+      <ol class="week" id="week-strip"></ol>
+    </section>
+  </main>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

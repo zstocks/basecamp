@@ -147,9 +147,19 @@ const server = createServer(async (req, res) => {
     if (pathname === '/login' && req.method === 'POST') {
       return await handleLogin(req, res);
     }
+    if (pathname === '/login.html' && req.method === 'GET') {
+      const file = await readFile(join(PUBLIC_DIR, 'login.html'));
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      return res.end(file);
+    }
 
     // --- auth gate ---
     if (!isAuthenticated(req)) {
+      // Browser HTML requests redirect to login; everything else gets JSON 401.
+      if (req.method === 'GET' && (req.headers.accept || '').includes('text/html')) {
+        res.writeHead(302, { Location: '/login.html' });
+        return res.end();
+      }
       return sendJson(res, 401, { error: 'Unauthorized' });
     }
 
