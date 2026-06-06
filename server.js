@@ -5,6 +5,9 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join, extname } from 'node:path';
 import * as habitsRepo from './src/habits.js';
 import * as logsRepo from './src/habitLogs.js';
+import * as metricsRepo from './src/bodyMetrics.js';
+import * as cravingsRepo from './src/cravings.js';
+import * as settingsRepo from './src/settings.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
@@ -63,6 +66,43 @@ async function handleApi(req, res, pathname) {
   if (pathname === '/api/habit-logs' && req.method === 'PUT') {
     const body = await readJsonBody(req);
     return sendJson(res, 200, logsRepo.setHabitLog(body));
+  }
+
+  // GET /api/body-metrics?date=YYYY-MM-DD       → one row (or null)
+  // GET /api/body-metrics?from=...&to=...       → array
+  if (pathname === '/api/body-metrics' && req.method === 'GET') {
+    const params = new URL(req.url, 'http://x').searchParams;
+    const date = params.get('date');
+    if (date) return sendJson(res, 200, metricsRepo.getBodyMetricForDate(date) ?? null);
+    return sendJson(res, 200, metricsRepo.listBodyMetrics({
+      from: params.get('from'),
+      to: params.get('to'),
+    }));
+  }
+  // PUT /api/body-metrics
+  if (pathname === '/api/body-metrics' && req.method === 'PUT') {
+    const body = await readJsonBody(req);
+    return sendJson(res, 200, metricsRepo.setBodyMetric(body));
+  }
+
+  // GET /api/cravings?limit=N
+  if (pathname === '/api/cravings' && req.method === 'GET') {
+    const limit = Number(new URL(req.url, 'http://x').searchParams.get('limit')) || 30;
+    return sendJson(res, 200, cravingsRepo.listCravingEvents({ limit }));
+  }
+  // POST /api/cravings
+  if (pathname === '/api/cravings' && req.method === 'POST') {
+    const body = await readJsonBody(req);
+    return sendJson(res, 201, cravingsRepo.logCravingEvent(body));
+  }
+
+  // GET /api/settings, PUT /api/settings
+  if (pathname === '/api/settings' && req.method === 'GET') {
+    return sendJson(res, 200, settingsRepo.getSettings());
+  }
+  if (pathname === '/api/settings' && req.method === 'PUT') {
+    const body = await readJsonBody(req);
+    return sendJson(res, 200, settingsRepo.updateSettings(body));
   }
 
   return sendJson(res, 404, { error: 'Not found' });
