@@ -8,6 +8,13 @@ import * as logsRepo from './src/habitLogs.js';
 import * as metricsRepo from './src/bodyMetrics.js';
 import * as cravingsRepo from './src/cravings.js';
 import * as settingsRepo from './src/settings.js';
+import {
+  signCookieValue,
+  verifyPassword,
+  buildSetCookieHeader,
+  isAuthenticated,
+} from './src/auth.js';
+import { isLoginRateLimited, recordLoginAttempt } from './src/rateLimit.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
@@ -33,6 +40,25 @@ async function readJsonBody(req) {
 function sendJson(res, status, body) {
   res.writeHead(status, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify(body));
+}
+
+// --- auth ---
+
+async function handleLogin(req, res) {
+  const ip = req.socket.remoteAddress ?? 'unknown';
+  if (isLoginRateLimited(ip)) {
+    return sendJson(res, 429, { error: 'Too many attempts. Try again later.' });
+  }
+
+  const body = await readJsonBody(req);
+  if (!verifyPassword(body.password)) {
+    recordLoginAttempt(ip);
+    return sendJson(res, 401, { error: 'Invalid password' });
+  }
+
+  const cookie = signCookieValue();
+  res.setHeader('Set-Cookie', buildSetCookieHeader({ value: cookie }));
+  sendJson(res, 200, { ok: true });
 }
 
 // --- API ---
@@ -114,15 +140,29 @@ const server = createServer(async (req, res) => {
   try {
     const pathname = req.url.split('?')[0];
 
+    // --- public routes ---
+    if (pathname === '/health' && req.method === 'GET') {
+      return sendJson(res, 200, { status: 'ok', app: 'basecamp' });
+    }
+    if (pathname === '/login' && req.method === 'POST') {
+      return await handleLogin(req, res);
+    }
+
+    // --- auth gate ---
+    if (!isAuthenticated(req)) {
+      return sendJson(res, 401, { error: 'Unauthorized' });
+    }
+
+    // --- authenticated routes ---
+    if (pathname === '/logout' && req.method === 'POST') {
+      res.setHeader('Set-Cookie', buildSetCookieHeader({ clear: true }));
+      return sendJson(res, 200, { ok: true });
+    }
     if (pathname.startsWith('/api/')) {
       return await handleApi(req, res, pathname);
     }
 
-    if (pathname === '/health') {
-      return sendJson(res, 200, { status: 'ok', app: 'basecamp' });
-    }
-
-    // Static (GET/HEAD only)
+    // static files (also gated)
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       res.writeHead(405).end('Method Not Allowed');
       return;
