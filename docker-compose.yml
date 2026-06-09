@@ -1,0 +1,23 @@
+services:
+  basecamp:
+    build: .
+    container_name: basecamp
+    restart: unless-stopped
+    env_file: .env
+    # Bind to loopback only — Nginx proxies to it. Never 0.0.0.0 (Docker's
+    # iptables rules would bypass UFW and expose the port publicly).
+    ports:
+      - "127.0.0.1:3005:3000"
+    # SQLite file persists on the host; back up by copying ./data.
+    volumes:
+      - ./data:/app/data
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://localhost:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

@@ -1,0 +1,15 @@
+# Host node_modules holds a Windows-built better-sqlite3 binary — never copy it
+# into the Linux image; deps are reinstalled/compiled in the build stage.
+node_modules
+data
+.env
+.git
+.gitignore
+*.log
+npm-debug.log*
+Dockerfile
+.dockerignore
+docker-compose.yml
+deploy
+CLAUDE.md
+inspect-db.js
