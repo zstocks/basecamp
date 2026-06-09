@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Basecamp — Habits</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header>
+    <h1>Basecamp</h1>
+    <nav class="nav">
+      <a href="/">Dashboard</a>
+      <a href="/habits.html" class="active" aria-current="page">Habits</a>
+      <a href="/settings.html">Settings</a>
+    </nav>
+    <button id="logout-btn" class="ghost">Log out</button>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2 id="form-title">Add a habit</h2>
+      <form id="habit-form" class="form">
+        <input type="hidden" id="habit-id">
+
+        <div class="field">
+          <label for="name">Name</label>
+          <input type="text" id="name" required maxlength="120" autocomplete="off">
+        </div>
+
+        <div class="field">
+          <label for="note">Note <span class="optional">(optional)</span></label>
+          <input type="text" id="note" maxlength="280" autocomplete="off">
+        </div>
+
+        <div class="field">
+          <label for="cadence_type">Cadence</label>
+          <select id="cadence_type">
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly (target count)</option>
+            <option value="weekdays">Specific days</option>
+          </select>
+        </div>
+
+        <div class="field" id="count-field" hidden>
+          <label for="cadence_count">Times per week</label>
+          <input type="number" id="cadence_count" min="1" max="7" step="1">
+        </div>
+
+        <div class="field" id="days-field" hidden>
+          <label>Days</label>
+          <div class="day-picker" id="day-picker"></div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" id="submit-btn" class="primary">Add habit</button>
+          <button type="button" id="cancel-btn" class="ghost" hidden>Cancel</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Active habits</h2>
+      <ul class="manage-list" id="active-list"></ul>
+      <p class="empty" id="active-empty" hidden>No active habits yet.</p>
+    </section>
+
+    <section class="card" id="archived-card" hidden>
+      <h2>Archived</h2>
+      <ul class="manage-list" id="archived-list"></ul>
+    </section>
+  </main>
+
+  <script type="module" src="/habits.js"></script>
+</body>
+</html>

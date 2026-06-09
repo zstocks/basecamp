@@ -1,4 +1,5 @@
 import { api } from '/api.js';
+import { showError } from '/toast.js';
 
 const today = ymd(new Date());
 const todayDow = new Date().getDay();   // 0=Sun..6=Sat
@@ -181,11 +182,6 @@ function bindEvents() {
       showError(err);
     }
   });
-}
-
-function showError(err) {
-  console.error(err);
-  alert(err.message || String(err));
 }
 
 function ymd(d) {

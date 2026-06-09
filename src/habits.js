@@ -37,7 +37,8 @@ export function updateHabit(id, fields) {
   for (const key of allowed) {
     if (key in fields) {
       sets.push(`${key} = ?`);
-      values.push(fields[key]);
+      // SQLite/better-sqlite3 can't bind JS booleans — store active as 0/1.
+      values.push(key === 'active' ? (fields[key] ? 1 : 0) : fields[key]);
     }
   }
   if (sets.length === 0) return existing;

@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Basecamp — Settings</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header>
+    <h1>Basecamp</h1>
+    <nav class="nav">
+      <a href="/">Dashboard</a>
+      <a href="/habits.html">Habits</a>
+      <a href="/settings.html" class="active" aria-current="page">Settings</a>
+    </nav>
+    <button id="logout-btn" class="ghost">Log out</button>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>Targets</h2>
+      <p class="hint">Leave a field blank to clear it. These drive the dashboard goals and (later) trend charts.</p>
+      <form id="settings-form" class="form">
+        <div class="field">
+          <label for="goal_weight">Goal weight (lb)</label>
+          <input type="number" id="goal_weight" step="0.1" min="0" placeholder="—">
+        </div>
+        <div class="field">
+          <label for="target_calories">Daily calories</label>
+          <input type="number" id="target_calories" step="1" min="0" placeholder="—">
+        </div>
+        <div class="field">
+          <label for="target_protein_g">Daily protein (g)</label>
+          <input type="number" id="target_protein_g" step="1" min="0" placeholder="—">
+        </div>
+        <div class="field">
+          <label for="target_water_ml">Daily water (ml)</label>
+          <input type="number" id="target_water_ml" step="1" min="0" placeholder="—">
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="primary">Save targets</button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <script type="module" src="/settings.js"></script>
+</body>
+</html>
