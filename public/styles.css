@@ -168,6 +168,40 @@ button.danger:hover { background: var(--danger); color: var(--accent-text); bord
 .manage-actions button { padding: 0.4rem 0.7rem; font-size: 0.85rem; }
 #archived-card .manage-name { color: var(--text-muted); }
 
+/* --- today's workout (dashboard) with inline set logging --- */
+.workouts { list-style: none; padding: 0; margin: 0;
+            display: flex; flex-direction: column; gap: 0.25rem; }
+.workout-item { display: flex; flex-direction: column; gap: 0.5rem; padding: 0.3rem 0; }
+.workout-row { display: flex; align-items: center; gap: 0.75rem; }
+.workout-row input[type="checkbox"] {
+  width: 1.4rem; height: 1.4rem; accent-color: var(--accent);
+  cursor: pointer; flex-shrink: 0;
+}
+.workout-row label { cursor: pointer; user-select: none; flex: 1; min-width: 0; }
+.workout-row input:checked + label { text-decoration: line-through; color: var(--text-muted); }
+.toggle-sets { padding: 0.35rem 0.7rem; font-size: 0.85rem; flex-shrink: 0; }
+
+.workout-sets { display: flex; flex-direction: column; gap: 0.85rem;
+                padding: 0.25rem 0 0.5rem; }
+.sets-grid { display: flex; flex-direction: column; gap: 0.85rem; }
+.exercise-group { display: flex; flex-direction: column; gap: 0.4rem; }
+.exercise-name { margin: 0; font-size: 0.9rem; }
+.set-rows { display: flex; flex-direction: column; gap: 0.4rem; }
+.set-row { display: grid; grid-template-columns: 3.25rem 1fr 1fr auto;
+           gap: 0.4rem; align-items: center; }
+.set-num { font-size: 0.8rem; color: var(--text-muted); }
+.set-row input {
+  width: 100%; padding: 0.45rem 0.55rem;
+  background: var(--bg); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  font-size: 0.95rem; font-family: inherit;
+}
+.set-row input:focus { outline: none; border-color: var(--accent); }
+.remove-set { padding: 0.3rem 0.55rem; line-height: 1; color: var(--text-muted); }
+.remove-set:hover { color: var(--danger); background: transparent; }
+.add-set { align-self: flex-start; padding: 0.3rem 0.6rem; font-size: 0.85rem; }
+.save-sets { align-self: flex-start; }
+
 /* --- sub-tab nav (within a section, e.g. Workouts) --- */
 .subnav { display: flex; gap: 0.25rem; flex-wrap: wrap; }
 .subnav a {
