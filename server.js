@@ -29,6 +29,10 @@ const MIME = {
   '.css': 'text/css',
   '.js': 'text/javascript',
   '.json': 'application/json',
+  '.ico': 'image/x-icon',
+  '.png': 'image/png',
+  '.svg': 'image/svg+xml',
+  '.webmanifest': 'application/manifest+json',
 };
 
 // --- helpers ---
@@ -44,6 +48,22 @@ async function readJsonBody(req) {
 function sendJson(res, status, body) {
   res.writeHead(status, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify(body));
+}
+
+// Serve a file from public/. ENOENT propagates to the caller's try/catch (→ 404).
+async function serveStatic(req, res, pathname) {
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    res.writeHead(405).end('Method Not Allowed');
+    return;
+  }
+  const path = pathname === '/' ? '/index.html' : pathname;
+  if (path.includes('..')) {
+    res.writeHead(403).end('Forbidden');
+    return;
+  }
+  const file = await readFile(join(PUBLIC_DIR, path));
+  res.writeHead(200, { 'Content-Type': MIME[extname(path)] || 'application/octet-stream' });
+  res.end(req.method === 'HEAD' ? undefined : file);
 }
 
 // --- auth ---
@@ -238,6 +258,13 @@ const server = createServer(async (req, res) => {
       res.writeHead(200, { 'Content-Type': 'text/html' });
       return res.end(file);
     }
+    // Icons + manifest load before auth so they show on the login page too.
+    if (req.method === 'GET' &&
+        (pathname === '/favicon.ico' ||
+         pathname === '/site.webmanifest' ||
+         pathname.startsWith('/icons/'))) {
+      return await serveStatic(req, res, pathname);
+    }
 
     // --- auth gate ---
     if (!isAuthenticated(req)) {
@@ -259,18 +286,7 @@ const server = createServer(async (req, res) => {
     }
 
     // static files (also gated)
-    if (req.method !== 'GET' && req.method !== 'HEAD') {
-      res.writeHead(405).end('Method Not Allowed');
-      return;
-    }
-    const path = pathname === '/' ? '/index.html' : pathname;
-    if (path.includes('..')) {
-      res.writeHead(403).end('Forbidden');
-      return;
-    }
-    const file = await readFile(join(PUBLIC_DIR, path));
-    res.writeHead(200, { 'Content-Type': MIME[extname(path)] || 'application/octet-stream' });
-    res.end(req.method === 'HEAD' ? undefined : file);
+    return await serveStatic(req, res, pathname);
   } catch (err) {
     if (err.code === 'ENOENT') {
       res.writeHead(404).end('Not Found');
