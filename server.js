@@ -11,6 +11,7 @@ import * as settingsRepo from './src/settings.js';
 import * as templatesRepo from './src/workoutTemplates.js';
 import * as scheduleRepo from './src/workoutSchedule.js';
 import * as sessionsRepo from './src/workoutSessions.js';
+import * as sessionSetsRepo from './src/sessionSets.js';
 import {
   signCookieValue,
   verifyPassword,
@@ -178,6 +179,17 @@ async function handleApi(req, res, pathname) {
   if (pathname === '/api/workout-sessions' && req.method === 'PUT') {
     const body = await readJsonBody(req);
     return sendJson(res, 200, sessionsRepo.setSession(body));
+  }
+  // GET/PUT /api/workout-sessions/:id/sets  → logged actuals, replace-all on PUT
+  const setsMatch = pathname.match(/^\/api\/workout-sessions\/(\d+)\/sets$/);
+  if (setsMatch && req.method === 'GET') {
+    return sendJson(res, 200, sessionSetsRepo.getSetsForSession(Number(setsMatch[1])));
+  }
+  if (setsMatch && req.method === 'PUT') {
+    const body = await readJsonBody(req);
+    const sets = sessionSetsRepo.setSessionSets(Number(setsMatch[1]), body.sets);
+    if (sets === null) return sendJson(res, 404, { error: 'Session not found' });
+    return sendJson(res, 200, sets);
   }
 
   // GET /api/settings, PUT /api/settings
