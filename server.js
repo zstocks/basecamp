@@ -169,11 +169,16 @@ async function handleApi(req, res, pathname) {
     return sendJson(res, 200, { ok: true });
   }
 
-  // GET /api/workout-sessions?date=YYYY-MM-DD
+  // GET /api/workout-sessions?date=YYYY-MM-DD   → one day
+  // GET /api/workout-sessions?from=...&to=...    → range (stats heatmap)
   if (pathname === '/api/workout-sessions' && req.method === 'GET') {
-    const date = new URL(req.url, 'http://x').searchParams.get('date');
-    if (!date) return sendJson(res, 400, { error: 'date query param required' });
-    return sendJson(res, 200, sessionsRepo.getSessionsForDate(date));
+    const params = new URL(req.url, 'http://x').searchParams;
+    const date = params.get('date');
+    if (date) return sendJson(res, 200, sessionsRepo.getSessionsForDate(date));
+    const from = params.get('from');
+    const to = params.get('to');
+    if (from || to) return sendJson(res, 200, sessionsRepo.listSessions({ from, to }));
+    return sendJson(res, 400, { error: 'date or from/to query param required' });
   }
   // PUT /api/workout-sessions
   if (pathname === '/api/workout-sessions' && req.method === 'PUT') {

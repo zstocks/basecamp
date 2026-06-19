@@ -16,6 +16,17 @@ export function getSessionsForDate(date) {
   return db.prepare(`${SELECT} WHERE s.date = ? ORDER BY wt.name ASC`).all(date);
 }
 
+// Range query for stats/history (the consistency heatmap). Either bound is
+// optional; ordered oldest-first.
+export function listSessions({ from, to } = {}) {
+  const clauses = [];
+  const args = [];
+  if (from) { clauses.push('s.date >= ?'); args.push(from); }
+  if (to)   { clauses.push('s.date <= ?'); args.push(to); }
+  const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+  return db.prepare(`${SELECT} ${where} ORDER BY s.date ASC, wt.name ASC`).all(...args);
+}
+
 export function setSession({ date, template_id, completed, note }) {
   if (!date || !template_id) {
     throw Object.assign(new Error('date and template_id are required'), { status: 400 });

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Basecamp — Stats</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header>
+    <h1>Basecamp</h1>
+    <nav class="nav">
+      <a href="/">Dashboard</a>
+      <a href="/habits.html">Habits</a>
+      <a href="/workouts.html">Workouts</a>
+      <a href="/stats.html" class="active" aria-current="page">Stats</a>
+      <a href="/settings.html">Settings</a>
+    </nav>
+    <button id="logout-btn" class="ghost">Log out</button>
+  </header>
+
+  <main>
+    <nav class="subnav">
+      <a href="/stats.html?tab=habits" id="tab-habits">Habits</a>
+      <a href="/stats.html?tab=workouts" id="tab-workouts">Workouts</a>
+      <a href="/stats.html?tab=diet" id="tab-diet">Diet</a>
+    </nav>
+
+    <section class="card" id="section-habits" hidden>
+      <h2>Habit stats</h2>
+      <p class="empty">Coming soon.</p>
+    </section>
+
+    <section class="card" id="section-workouts" hidden>
+      <h2>Workout consistency</h2>
+      <p class="hint" id="wk-summary">Loading…</p>
+      <div class="heatmap" id="heatmap"></div>
+      <div class="day-detail" id="day-detail"></div>
+    </section>
+
+    <section class="card" id="section-diet" hidden>
+      <h2>Diet stats</h2>
+      <p class="empty">Coming in Phase 3.</p>
+    </section>
+  </main>
+
+  <script type="module" src="/stats.js"></script>
+</body>
+</html>

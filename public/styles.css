@@ -168,6 +168,34 @@ button.danger:hover { background: var(--danger); color: var(--accent-text); bord
 .manage-actions button { padding: 0.4rem 0.7rem; font-size: 0.85rem; }
 #archived-card .manage-name { color: var(--text-muted); }
 
+/* --- stats: workout consistency heatmap --- */
+.heatmap { display: flex; flex-direction: column; gap: 4px; margin-top: 0.25rem; }
+.hm-head, .hm-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.hm-dow { text-align: center; font-size: 0.7rem; color: var(--text-muted); }
+.hm-cell {
+  aspect-ratio: 1; border-radius: 4px;
+  background: var(--surface-hover); border: 1px solid var(--border);
+}
+.hm-cell.done { background: var(--accent); border-color: var(--accent); }
+.hm-cell.future { background: transparent; border-color: transparent; }
+.hm-cell.clickable { cursor: pointer; }
+.hm-cell.clickable:hover { border-color: var(--text-muted); }
+.hm-cell.selected { outline: 2px solid var(--text); outline-offset: 1px; }
+
+.day-detail:not(:empty) { margin-top: 1.25rem; }
+.day-detail h3 { margin: 0 0 0.75rem; font-size: 1rem; }
+.session-detail { margin-bottom: 1rem; }
+.session-detail h4 { margin: 0 0 0.4rem; font-size: 0.9rem; }
+.detail-exercises { list-style: none; padding: 0; margin: 0;
+                    display: flex; flex-direction: column; gap: 0.35rem; }
+.detail-exercises li {
+  display: flex; justify-content: space-between; gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+}
+.detail-ex-name { font-weight: 500; }
+.detail-sets { color: var(--text-muted); font-size: 0.9rem; text-align: right; }
+
 /* --- today's workout (dashboard) with inline set logging --- */
 .workouts { list-style: none; padding: 0; margin: 0;
             display: flex; flex-direction: column; gap: 0.25rem; }
