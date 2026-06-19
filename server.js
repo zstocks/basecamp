@@ -8,6 +8,7 @@ import * as logsRepo from './src/habitLogs.js';
 import * as metricsRepo from './src/bodyMetrics.js';
 import * as cravingsRepo from './src/cravings.js';
 import * as settingsRepo from './src/settings.js';
+import * as templatesRepo from './src/workoutTemplates.js';
 import {
   signCookieValue,
   verifyPassword,
@@ -120,6 +121,30 @@ async function handleApi(req, res, pathname) {
   if (pathname === '/api/cravings' && req.method === 'POST') {
     const body = await readJsonBody(req);
     return sendJson(res, 201, cravingsRepo.logCravingEvent(body));
+  }
+
+  // GET /api/workout-templates
+  if (pathname === '/api/workout-templates' && req.method === 'GET') {
+    return sendJson(res, 200, templatesRepo.listTemplates());
+  }
+  // POST /api/workout-templates
+  if (pathname === '/api/workout-templates' && req.method === 'POST') {
+    const body = await readJsonBody(req);
+    return sendJson(res, 201, templatesRepo.createTemplate(body));
+  }
+  // GET /api/workout-templates/:id  → template with nested exercises
+  const templateMatch = pathname.match(/^\/api\/workout-templates\/(\d+)$/);
+  if (templateMatch && req.method === 'GET') {
+    const template = templatesRepo.getTemplate(Number(templateMatch[1]));
+    if (!template) return sendJson(res, 404, { error: 'Template not found' });
+    return sendJson(res, 200, template);
+  }
+  // PUT /api/workout-templates/:id
+  if (templateMatch && req.method === 'PUT') {
+    const body = await readJsonBody(req);
+    const template = templatesRepo.updateTemplate(Number(templateMatch[1]), body);
+    if (!template) return sendJson(res, 404, { error: 'Template not found' });
+    return sendJson(res, 200, template);
   }
 
   // GET /api/settings, PUT /api/settings
