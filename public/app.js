@@ -9,6 +9,8 @@ let todaysLogs = [];
 let todaysMetrics = null;
 let settings = null;
 let weekData = [];      // [{ date, dow, scheduled, doneCount, summit }]
+let todaysWorkouts = [];  // schedule entries for today's weekday
+let todaysSessions = [];  // workout_sessions for today
 
 init().catch(showError);
 
@@ -16,6 +18,7 @@ async function init() {
   await loadData();
   renderTodayHeader();
   renderHabits();
+  renderWorkouts();
   renderMetrics();
   renderWeek();
   renderStreak();
@@ -25,16 +28,20 @@ async function init() {
 async function loadData() {
   const dates = lastNDates(7); // index 0 = today, newest first
 
-  const [habitsRes, settingsRes, metricsRes, ...logsByDate] = await Promise.all([
+  const [habitsRes, settingsRes, metricsRes, scheduleRes, sessionsRes, ...logsByDate] = await Promise.all([
     api.get('/api/habits'),
     api.get('/api/settings'),
     api.get(`/api/body-metrics?date=${today}`),
+    api.get(`/api/workout-schedule?weekday=${todayDow}`),
+    api.get(`/api/workout-sessions?date=${today}`),
     ...dates.map(d => api.get(`/api/habit-logs?date=${d}`)),
   ]);
 
   habits = habitsRes;
   settings = settingsRes;
   todaysMetrics = metricsRes;
+  todaysWorkouts = scheduleRes;
+  todaysSessions = sessionsRes;
   todaysLogs = logsByDate[0];
 
   weekData = dates.map((date, i) => {
@@ -89,6 +96,34 @@ function renderHabits() {
   }
 }
 
+function renderWorkouts() {
+  const list = document.getElementById('workouts-list');
+  const empty = document.getElementById('workouts-empty');
+  list.innerHTML = '';
+
+  if (todaysWorkouts.length === 0) { empty.hidden = false; return; }
+  empty.hidden = true;
+
+  const completed = new Set(
+    todaysSessions.filter(s => s.completed === 1).map(s => s.template_id)
+  );
+
+  for (const w of todaysWorkouts) {
+    const li = document.createElement('li');
+    const id = `workout-${w.template_id}`;
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.id = id;
+    checkbox.dataset.templateId = w.template_id;
+    checkbox.checked = completed.has(w.template_id);
+    const label = document.createElement('label');
+    label.htmlFor = id;
+    label.textContent = w.template_name;   // textContent — XSS-safe
+    li.append(checkbox, label);
+    list.appendChild(li);
+  }
+}
+
 function renderMetrics() {
   document.getElementById('weight-input').value = todaysMetrics?.weight ?? '';
   document.getElementById('water-current').textContent = todaysMetrics?.water_ml ?? 0;
@@ -135,6 +170,20 @@ function bindEvents() {
       renderStreak();
     } catch (err) {
       e.target.checked = !done;
+      showError(err);
+    }
+  });
+
+  document.getElementById('workouts-list').addEventListener('change', async (e) => {
+    if (!e.target.matches('input[type="checkbox"]')) return;
+    const templateId = Number(e.target.dataset.templateId);
+    const completed = e.target.checked;
+    try {
+      await api.put('/api/workout-sessions', { date: today, template_id: templateId, completed });
+      // Refresh today's sessions so state stays in sync (workouts don't feed the streak yet).
+      todaysSessions = await api.get(`/api/workout-sessions?date=${today}`);
+    } catch (err) {
+      e.target.checked = !completed;
       showError(err);
     }
   });
