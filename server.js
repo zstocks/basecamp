@@ -9,6 +9,7 @@ import * as metricsRepo from './src/bodyMetrics.js';
 import * as cravingsRepo from './src/cravings.js';
 import * as settingsRepo from './src/settings.js';
 import * as templatesRepo from './src/workoutTemplates.js';
+import * as scheduleRepo from './src/workoutSchedule.js';
 import {
   signCookieValue,
   verifyPassword,
@@ -145,6 +146,25 @@ async function handleApi(req, res, pathname) {
     const template = templatesRepo.updateTemplate(Number(templateMatch[1]), body);
     if (!template) return sendJson(res, 404, { error: 'Template not found' });
     return sendJson(res, 200, template);
+  }
+
+  // GET /api/workout-schedule[?weekday=N]
+  if (pathname === '/api/workout-schedule' && req.method === 'GET') {
+    const raw = new URL(req.url, 'http://x').searchParams.get('weekday');
+    const weekday = raw === null ? undefined : Number(raw);
+    return sendJson(res, 200, scheduleRepo.listSchedule({ weekday }));
+  }
+  // POST /api/workout-schedule
+  if (pathname === '/api/workout-schedule' && req.method === 'POST') {
+    const body = await readJsonBody(req);
+    return sendJson(res, 201, scheduleRepo.addScheduleEntry(body));
+  }
+  // DELETE /api/workout-schedule/:id
+  const scheduleMatch = pathname.match(/^\/api\/workout-schedule\/(\d+)$/);
+  if (scheduleMatch && req.method === 'DELETE') {
+    const removed = scheduleRepo.removeScheduleEntry(Number(scheduleMatch[1]));
+    if (!removed) return sendJson(res, 404, { error: 'Schedule entry not found' });
+    return sendJson(res, 200, { ok: true });
   }
 
   // GET /api/settings, PUT /api/settings
