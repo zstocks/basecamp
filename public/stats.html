@@ -31,12 +31,24 @@
       <p class="empty">Coming soon.</p>
     </section>
 
-    <section class="card" id="section-workouts" hidden>
-      <h2>Workout consistency</h2>
-      <p class="hint" id="wk-summary">Loading…</p>
-      <div class="heatmap" id="heatmap"></div>
-      <div class="day-detail" id="day-detail"></div>
-    </section>
+    <div id="section-workouts" hidden>
+      <section class="card">
+        <h2>Workout consistency</h2>
+        <p class="hint" id="wk-summary">Loading…</p>
+        <div class="heatmap" id="heatmap"></div>
+        <div class="day-detail" id="day-detail"></div>
+      </section>
+
+      <section class="card">
+        <h2>Exercise progress</h2>
+        <div class="field">
+          <label for="exercise-select">Exercise</label>
+          <select id="exercise-select"></select>
+        </div>
+        <p class="hint" id="progress-hint" hidden>Top set per day (heaviest weight).</p>
+        <div class="progress-list" id="progress-list"></div>
+      </section>
+    </div>
 
     <section class="card" id="section-diet" hidden>
       <h2>Diet stats</h2>

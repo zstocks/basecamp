@@ -12,7 +12,10 @@ init().catch(showError);
 async function init() {
   const tab = currentTab();
   activateTab(tab);
-  if (tab === 'workouts') await loadWorkouts();
+  if (tab === 'workouts') {
+    await loadWorkouts();
+    await loadExercisePicker();
+  }
   bindLogout();
 }
 
@@ -178,6 +181,97 @@ async function sessionDetail(session) {
 function fmtSet(r) {
   const reps = r.reps ?? '—';
   return r.weight == null ? `${reps}` : `${reps}×${r.weight}`;
+}
+
+// --- per-exercise progress (top set per day) ---
+
+async function loadExercisePicker() {
+  const select = document.getElementById('exercise-select');
+  let names = [];
+  try {
+    names = await api.get('/api/exercise-names');
+  } catch (err) {
+    return showError(err);
+  }
+
+  select.innerHTML = '';
+  if (names.length === 0) {
+    const opt = document.createElement('option');
+    opt.textContent = 'No logged exercises yet';
+    opt.value = '';
+    select.appendChild(opt);
+    select.disabled = true;
+    return;
+  }
+
+  select.disabled = false;
+  for (const n of names) {
+    const opt = document.createElement('option');
+    opt.value = n;
+    opt.textContent = n;            // textContent — XSS-safe
+    select.appendChild(opt);
+  }
+  select.addEventListener('change', () => renderProgress(select.value));
+  await renderProgress(select.value);
+}
+
+async function renderProgress(exercise) {
+  const list = document.getElementById('progress-list');
+  const hint = document.getElementById('progress-hint');
+  list.innerHTML = '';
+  if (!exercise) { hint.hidden = true; return; }
+
+  let sets = [];
+  try {
+    sets = await api.get(`/api/session-sets?exercise=${encodeURIComponent(exercise)}`);
+  } catch (err) {
+    return showError(err);
+  }
+
+  // Reduce to the top set per day: heaviest weight, tie-break by reps. For
+  // bodyweight exercises (no weight) this falls back to most reps.
+  const byDate = new Map();
+  for (const s of sets) {
+    const cur = byDate.get(s.date);
+    if (!cur || isBetter(s, cur)) byDate.set(s.date, s);
+  }
+  const days = [...byDate.entries()].sort((a, b) => b[0].localeCompare(a[0])); // newest first
+
+  hint.hidden = days.length === 0;
+  if (days.length === 0) {
+    const p = document.createElement('p');
+    p.className = 'sched-empty';
+    p.textContent = 'No sets logged for this exercise.';
+    list.appendChild(p);
+    return;
+  }
+
+  const ul = document.createElement('ul');
+  ul.className = 'detail-exercises';
+  for (const [date, best] of days) {
+    const li = document.createElement('li');
+    const d = document.createElement('span');
+    d.className = 'detail-ex-name';
+    d.textContent = shortDate(date);
+    const v = document.createElement('span');
+    v.className = 'detail-sets';
+    v.textContent = fmtSet(best);
+    li.append(d, v);
+    ul.appendChild(li);
+  }
+  list.appendChild(ul);
+}
+
+function isBetter(a, b) {
+  const aw = a.weight ?? -1;
+  const bw = b.weight ?? -1;
+  if (aw !== bw) return aw > bw;
+  return (a.reps ?? -1) > (b.reps ?? -1);
+}
+
+function shortDate(ds) {
+  return new Date(ds + 'T00:00:00')
+    .toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 // --- helpers ---

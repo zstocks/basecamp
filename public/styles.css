@@ -196,6 +196,16 @@ button.danger:hover { background: var(--danger); color: var(--accent-text); bord
 .detail-ex-name { font-weight: 500; }
 .detail-sets { color: var(--text-muted); font-size: 0.9rem; text-align: right; }
 
+/* select inside a .field but outside a .form (e.g. exercise progress picker) */
+.field select {
+  width: 100%; padding: 0.6rem 0.75rem;
+  background: var(--bg); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  font-size: 1rem; font-family: inherit;
+}
+.field select:focus { outline: none; border-color: var(--accent); }
+.progress-list:not(:empty) { margin-top: 0.75rem; }
+
 /* --- today's workout (dashboard) with inline set logging --- */
 .workouts { list-style: none; padding: 0; margin: 0;
             display: flex; flex-direction: column; gap: 0.25rem; }

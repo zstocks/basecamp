@@ -185,6 +185,17 @@ async function handleApi(req, res, pathname) {
     const body = await readJsonBody(req);
     return sendJson(res, 200, sessionsRepo.setSession(body));
   }
+  // GET /api/exercise-names  → distinct logged exercise names (progress picker)
+  if (pathname === '/api/exercise-names' && req.method === 'GET') {
+    return sendJson(res, 200, sessionSetsRepo.listExerciseNames());
+  }
+  // GET /api/session-sets?exercise=Name  → all logged sets for one exercise
+  if (pathname === '/api/session-sets' && req.method === 'GET') {
+    const exercise = new URL(req.url, 'http://x').searchParams.get('exercise');
+    if (!exercise) return sendJson(res, 400, { error: 'exercise query param required' });
+    return sendJson(res, 200, sessionSetsRepo.listSetsByExercise(exercise));
+  }
+
   // GET/PUT /api/workout-sessions/:id/sets  → logged actuals, replace-all on PUT
   const setsMatch = pathname.match(/^\/api\/workout-sessions\/(\d+)\/sets$/);
   if (setsMatch && req.method === 'GET') {
