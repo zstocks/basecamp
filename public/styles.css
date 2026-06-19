@@ -168,6 +168,33 @@ button.danger:hover { background: var(--danger); color: var(--accent-text); bord
 .manage-actions button { padding: 0.4rem 0.7rem; font-size: 0.85rem; }
 #archived-card .manage-name { color: var(--text-muted); }
 
+/* --- sub-tab nav (within a section, e.g. Workouts) --- */
+.subnav { display: flex; gap: 0.25rem; flex-wrap: wrap; }
+.subnav a {
+  padding: 0.4rem 0.85rem; border-radius: var(--radius);
+  color: var(--text-muted); text-decoration: none; font-size: 0.9rem;
+  border: 1px solid transparent;
+}
+.subnav a:hover { background: var(--surface-hover); color: var(--text); }
+.subnav a.active {
+  color: var(--text); background: var(--surface); border-color: var(--border);
+}
+
+/* --- weekly schedule (vertical day blocks) --- */
+.schedule { display: flex; flex-direction: column; gap: 1rem; }
+.sched-day h3 { margin: 0 0 0.5rem; font-size: 0.95rem; }
+.sched-empty { color: var(--text-muted); font-size: 0.85rem; margin: 0; }
+.sched-items { list-style: none; padding: 0; margin: 0;
+               display: flex; flex-direction: column; gap: 0.4rem; }
+.sched-item {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.55rem 0.75rem;
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+}
+.sched-name { flex: 1; min-width: 0; }
+.remove-sched { padding: 0.3rem 0.6rem; line-height: 1; color: var(--text-muted); }
+.remove-sched:hover { color: var(--danger); background: transparent; }
+
 /* --- workout template exercise rows --- */
 .exercise-list { display: flex; flex-direction: column; gap: 0.5rem; }
 .exercise-row {

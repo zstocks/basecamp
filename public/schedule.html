@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Basecamp — Schedule</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header>
+    <h1>Basecamp</h1>
+    <nav class="nav">
+      <a href="/">Dashboard</a>
+      <a href="/habits.html">Habits</a>
+      <a href="/workouts.html" class="active" aria-current="page">Workouts</a>
+      <a href="/settings.html">Settings</a>
+    </nav>
+    <button id="logout-btn" class="ghost">Log out</button>
+  </header>
+
+  <main>
+    <nav class="subnav">
+      <a href="/workouts.html">Templates</a>
+      <a href="/schedule.html" class="active" aria-current="page">Schedule</a>
+    </nav>
+
+    <section class="card">
+      <h2>Assign a workout</h2>
+      <form id="assign-form" class="form">
+        <div class="field">
+          <label for="template">Workout</label>
+          <select id="template"></select>
+        </div>
+        <div class="field">
+          <label for="weekday">Day</label>
+          <select id="weekday"></select>
+        </div>
+        <div class="form-actions">
+          <button type="submit" id="assign-btn" class="primary">Add to day</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Weekly schedule</h2>
+      <div class="schedule" id="schedule"></div>
+    </section>
+  </main>
+
+  <script type="module" src="/schedule.js"></script>
+</body>
+</html>
