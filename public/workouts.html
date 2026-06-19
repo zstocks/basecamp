@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Basecamp — Habits</title>
+  <title>Basecamp — Workouts</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
@@ -11,8 +11,8 @@
     <h1>Basecamp</h1>
     <nav class="nav">
       <a href="/">Dashboard</a>
-      <a href="/habits.html" class="active" aria-current="page">Habits</a>
-      <a href="/workouts.html">Workouts</a>
+      <a href="/habits.html">Habits</a>
+      <a href="/workouts.html" class="active" aria-current="page">Workouts</a>
       <a href="/settings.html">Settings</a>
     </nav>
     <button id="logout-btn" class="ghost">Log out</button>
@@ -20,9 +20,9 @@
 
   <main>
     <section class="card">
-      <h2 id="form-title">Add a habit</h2>
-      <form id="habit-form" class="form">
-        <input type="hidden" id="habit-id">
+      <h2 id="form-title">Add a workout template</h2>
+      <form id="template-form" class="form">
+        <input type="hidden" id="template-id">
 
         <div class="field">
           <label for="name">Name</label>
@@ -35,35 +35,22 @@
         </div>
 
         <div class="field">
-          <label for="cadence_type">Cadence</label>
-          <select id="cadence_type">
-            <option value="daily">Daily</option>
-            <option value="weekly">Weekly (target count)</option>
-            <option value="weekdays">Specific days</option>
-          </select>
-        </div>
-
-        <div class="field" id="count-field" hidden>
-          <label for="cadence_count">Times per week</label>
-          <input type="number" id="cadence_count" min="1" max="7" step="1">
-        </div>
-
-        <div class="field" id="days-field" hidden>
-          <label>Days</label>
-          <div class="day-picker" id="day-picker"></div>
+          <label>Exercises <span class="optional">(name required; sets/reps/weight optional)</span></label>
+          <div class="exercise-list" id="exercise-list"></div>
+          <button type="button" id="add-exercise" class="ghost add-exercise">+ Add exercise</button>
         </div>
 
         <div class="form-actions">
-          <button type="submit" id="submit-btn" class="primary">Add habit</button>
+          <button type="submit" id="submit-btn" class="primary">Add template</button>
           <button type="button" id="cancel-btn" class="ghost" hidden>Cancel</button>
         </div>
       </form>
     </section>
 
     <section class="card">
-      <h2>Active habits</h2>
+      <h2>Active templates</h2>
       <ul class="manage-list" id="active-list"></ul>
-      <p class="empty" id="active-empty" hidden>No active habits yet.</p>
+      <p class="empty" id="active-empty" hidden>No templates yet.</p>
     </section>
 
     <section class="card" id="archived-card" hidden>
@@ -72,6 +59,6 @@
     </section>
   </main>
 
-  <script type="module" src="/habits.js"></script>
+  <script type="module" src="/workouts.js"></script>
 </body>
 </html>

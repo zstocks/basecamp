@@ -168,6 +168,30 @@ button.danger:hover { background: var(--danger); color: var(--accent-text); bord
 .manage-actions button { padding: 0.4rem 0.7rem; font-size: 0.85rem; }
 #archived-card .manage-name { color: var(--text-muted); }
 
+/* --- workout template exercise rows --- */
+.exercise-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.exercise-row {
+  display: grid;
+  grid-template-columns: 1fr 3.5rem 3.5rem 4.5rem auto;
+  gap: 0.4rem; align-items: center;
+}
+.form .exercise-row input {
+  width: 100%; padding: 0.5rem 0.6rem;
+  background: var(--bg); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  font-size: 0.95rem; font-family: inherit;
+}
+.form .exercise-row input:focus { outline: none; border-color: var(--accent); }
+.exercise-row .remove-exercise {
+  padding: 0.4rem 0.6rem; line-height: 1; color: var(--text-muted);
+}
+.exercise-row .remove-exercise:hover { color: var(--danger); background: transparent; }
+.add-exercise { align-self: flex-start; }
+@media (max-width: 480px) {
+  .exercise-row { grid-template-columns: 1fr 1fr 1fr auto; }
+  .exercise-row .ex-name { grid-column: 1 / -1; }
+}
+
 /* --- toasts --- */
 .toast-container {
   position: fixed; left: 50%; bottom: 1.25rem; transform: translateX(-50%);

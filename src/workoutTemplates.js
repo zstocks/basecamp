@@ -32,9 +32,15 @@ function replaceExercises(templateId, exercises) {
 }
 
 export function listTemplates() {
-  return db
-    .prepare(`SELECT ${TEMPLATE_COLS} FROM workout_templates ORDER BY active DESC, name ASC`)
-    .all();
+  // exercise_count lets the management list show "N exercises" without an N+1
+  // fetch; the full exercises array still comes from getTemplate(id).
+  return db.prepare(`
+    SELECT ${TEMPLATE_COLS},
+           (SELECT COUNT(*) FROM template_exercises te WHERE te.template_id = workout_templates.id)
+             AS exercise_count
+    FROM workout_templates
+    ORDER BY active DESC, name ASC
+  `).all();
 }
 
 export function getTemplate(id) {
