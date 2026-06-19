@@ -10,6 +10,7 @@ import * as cravingsRepo from './src/cravings.js';
 import * as settingsRepo from './src/settings.js';
 import * as templatesRepo from './src/workoutTemplates.js';
 import * as scheduleRepo from './src/workoutSchedule.js';
+import * as sessionsRepo from './src/workoutSessions.js';
 import {
   signCookieValue,
   verifyPassword,
@@ -165,6 +166,18 @@ async function handleApi(req, res, pathname) {
     const removed = scheduleRepo.removeScheduleEntry(Number(scheduleMatch[1]));
     if (!removed) return sendJson(res, 404, { error: 'Schedule entry not found' });
     return sendJson(res, 200, { ok: true });
+  }
+
+  // GET /api/workout-sessions?date=YYYY-MM-DD
+  if (pathname === '/api/workout-sessions' && req.method === 'GET') {
+    const date = new URL(req.url, 'http://x').searchParams.get('date');
+    if (!date) return sendJson(res, 400, { error: 'date query param required' });
+    return sendJson(res, 200, sessionsRepo.getSessionsForDate(date));
+  }
+  // PUT /api/workout-sessions
+  if (pathname === '/api/workout-sessions' && req.method === 'PUT') {
+    const body = await readJsonBody(req);
+    return sendJson(res, 200, sessionsRepo.setSession(body));
   }
 
   // GET /api/settings, PUT /api/settings
