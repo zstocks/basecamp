@@ -221,19 +221,26 @@ button.danger:hover { background: var(--danger); color: var(--accent-text); bord
 
 .workout-sets { display: flex; flex-direction: column; gap: 0.85rem;
                 padding: 0.25rem 0 0.5rem; }
+.workout-sets[hidden] { display: none; }   /* explicit display beats the UA [hidden] rule */
 .sets-grid { display: flex; flex-direction: column; gap: 0.85rem; }
 .exercise-group { display: flex; flex-direction: column; gap: 0.4rem; }
 .exercise-name { margin: 0; font-size: 0.9rem; }
 .set-rows { display: flex; flex-direction: column; gap: 0.4rem; }
+.set-head,
 .set-row { display: grid; grid-template-columns: 3.25rem 1fr 1fr auto;
            gap: 0.4rem; align-items: center; }
+.set-col { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.03em;
+           color: var(--text-muted); padding-left: 0.1rem; }
 .set-num { font-size: 0.8rem; color: var(--text-muted); }
+.set-field { display: flex; align-items: center; gap: 0.35rem; min-width: 0; }
+.set-planned { font-size: 0.8rem; color: var(--text-muted); white-space: nowrap; }
 .set-row input {
   width: 100%; padding: 0.45rem 0.55rem;
   background: var(--bg); color: var(--text);
   border: 1px solid var(--border); border-radius: var(--radius);
   font-size: 0.95rem; font-family: inherit;
 }
+.set-field input { flex: 1; min-width: 0; width: auto; }
 .set-row input:focus { outline: none; border-color: var(--accent); }
 .remove-set { padding: 0.3rem 0.55rem; line-height: 1; color: var(--text-muted); }
 .remove-set:hover { color: var(--danger); background: transparent; }

@@ -181,7 +181,11 @@ function buildSetsPanel(panel, w, template, existing) {
   const grid = document.createElement('div');
   grid.className = 'sets-grid';
   // Existing logged sets win; otherwise pre-fill from the template's targets.
-  const groups = existing.length ? groupExisting(existing) : groupFromTemplate(template);
+  // Either way each group carries its planned target so we can show plan vs actual.
+  const planned = plannedMap(template);
+  const groups = existing.length
+    ? groupExisting(existing, planned)
+    : groupFromTemplate(template);
   for (const g of groups) grid.appendChild(exerciseGroup(g));
   panel.appendChild(grid);
 
@@ -200,24 +204,39 @@ function buildSetsPanel(panel, w, template, existing) {
   panel.appendChild(save);
 }
 
+// Planned target per exercise name (from the template), shown muted beside each actual.
+function plannedMap(template) {
+  const m = new Map();
+  for (const ex of template.exercises ?? []) {
+    m.set(ex.name, { reps: ex.target_reps ?? '', weight: ex.target_weight ?? '' });
+  }
+  return m;
+}
+
 function groupFromTemplate(template) {
   return (template.exercises ?? []).map(ex => {
     const n = Number.isInteger(ex.target_sets) && ex.target_sets > 0 ? ex.target_sets : 1;
+    const planned = { reps: ex.target_reps ?? '', weight: ex.target_weight ?? '' };
     const sets = [];
     for (let i = 0; i < n; i++) {
-      sets.push({ reps: ex.target_reps ?? '', weight: ex.target_weight ?? '' });
+      // Actual pre-fills from the plan; the muted planned hint shows what it defaulted from.
+      sets.push({ reps: planned.reps, weight: planned.weight });
     }
-    return { name: ex.name, sets };
+    return { name: ex.name, planned, sets };
   });
 }
 
-function groupExisting(rows) {
+function groupExisting(rows, planned) {
   const map = new Map();      // exercise_name -> [{reps, weight}], first-seen order
   for (const r of rows) {
     if (!map.has(r.exercise_name)) map.set(r.exercise_name, []);
     map.get(r.exercise_name).push({ reps: r.reps ?? '', weight: r.weight ?? '' });
   }
-  return [...map.entries()].map(([name, sets]) => ({ name, sets }));
+  return [...map.entries()].map(([name, sets]) => ({
+    name,
+    planned: planned.get(name) ?? { reps: '', weight: '' },
+    sets,
+  }));
 }
 
 function exerciseGroup(g) {
@@ -230,11 +249,22 @@ function exerciseGroup(g) {
   h.textContent = g.name;                // textContent — XSS-safe
   wrap.appendChild(h);
 
+  // Column header so the muted numbers read as "planned", the boxes as "actual".
+  const head = document.createElement('div');
+  head.className = 'set-head';
+  for (const text of ['', 'reps', 'weight', '']) {
+    const cell = document.createElement('span');
+    cell.className = 'set-col';
+    cell.textContent = text;
+    head.appendChild(cell);
+  }
+  wrap.appendChild(head);
+
   const rows = document.createElement('div');
   rows.className = 'set-rows';
   wrap.appendChild(rows);
 
-  for (const s of g.sets) rows.appendChild(setRow(s, rows));
+  for (const s of g.sets) rows.appendChild(setRow(s, rows, g.planned));
   renumber(rows);
 
   const add = document.createElement('button');
@@ -242,7 +272,7 @@ function exerciseGroup(g) {
   add.className = 'ghost add-set';
   add.textContent = '+ Add set';
   add.addEventListener('click', () => {
-    rows.appendChild(setRow({ reps: '', weight: '' }, rows));
+    rows.appendChild(setRow({ reps: '', weight: '' }, rows, g.planned));
     renumber(rows);
   });
   wrap.appendChild(add);
@@ -250,17 +280,15 @@ function exerciseGroup(g) {
   return wrap;
 }
 
-function setRow(s, rows) {
+function setRow(s, rows, planned) {
   const row = document.createElement('div');
   row.className = 'set-row';
 
   const num = document.createElement('span');
   num.className = 'set-num';
 
-  const reps = numberInput('Reps', s.reps, '1');
-  reps.classList.add('set-reps');
-  const weight = numberInput('Weight', s.weight, '0.5');
-  weight.classList.add('set-weight');
+  const reps = setField('Reps', s.reps, '1', 'set-reps', planned.reps);
+  const weight = setField('Weight', s.weight, '0.5', 'set-weight', planned.weight);
 
   const remove = document.createElement('button');
   remove.type = 'button';
@@ -271,6 +299,22 @@ function setRow(s, rows) {
 
   row.append(num, reps, weight, remove);
   return row;
+}
+
+// One field cell: muted planned target ("10 →") + the editable actual input.
+function setField(placeholder, actual, step, inputClass, plannedVal) {
+  const cell = document.createElement('div');
+  cell.className = 'set-field';
+
+  const plan = document.createElement('span');
+  plan.className = 'set-planned';
+  plan.textContent = plannedVal === '' || plannedVal == null ? '' : `${plannedVal} →`;
+
+  const input = numberInput(placeholder, actual, step);
+  input.classList.add(inputClass);
+
+  cell.append(plan, input);
+  return cell;
 }
 
 function numberInput(placeholder, value, step) {
