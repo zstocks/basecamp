@@ -219,8 +219,9 @@ function groupFromTemplate(template) {
     const planned = { reps: ex.target_reps ?? '', weight: ex.target_weight ?? '' };
     const sets = [];
     for (let i = 0; i < n; i++) {
-      // Actual pre-fills from the plan; the muted planned hint shows what it defaulted from.
-      sets.push({ reps: planned.reps, weight: planned.weight });
+      // Actuals start empty so an unfilled box reads as "not done yet"; the muted
+      // planned hint beside it shows the target to aim for.
+      sets.push({ reps: '', weight: '' });
     }
     return { name: ex.name, planned, sets };
   });
