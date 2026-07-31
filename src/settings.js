@@ -1,13 +1,18 @@
 import { db } from '../db.js';
 
-const COLS = 'id, goal_weight, target_calories, target_protein_g, target_water_ml, updated_at';
+const COLS =
+  'id, goal_weight, target_calories, target_protein_g, target_water_ml, ' +
+  'target_carbs_g, target_fat_g, target_fiber_g, target_sugar_g, updated_at';
 
 export function getSettings() {
   return db.prepare(`SELECT ${COLS} FROM settings WHERE id = 1`).get();
 }
 
 export function updateSettings(fields) {
-  const allowed = ['goal_weight', 'target_calories', 'target_protein_g', 'target_water_ml'];
+  const allowed = [
+    'goal_weight', 'target_calories', 'target_protein_g', 'target_water_ml',
+    'target_carbs_g', 'target_fat_g', 'target_fiber_g', 'target_sugar_g',
+  ];
   const sets = [];
   const values = [];
   for (const key of allowed) {
