@@ -127,6 +127,7 @@ footer a { color: var(--text-muted); margin: 0 0.5rem; }
 .field .optional { text-transform: none; }
 
 .form input[type="text"],
+.form input[type="number"],
 .form select {
   width: 100%; padding: 0.6rem 0.75rem;
   background: var(--bg); color: var(--text);
@@ -134,7 +135,12 @@ footer a { color: var(--text-muted); margin: 0 0.5rem; }
   font-size: 1rem; font-family: inherit;
 }
 .form input[type="text"]:focus,
+.form input[type="number"]:focus,
 .form select:focus { outline: none; border-color: var(--accent); }
+
+/* nutrition inputs: two compact columns, even on a phone (short number fields) */
+.nutrition-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem 1rem; }
+.field-hint { margin: 0; font-size: 0.8rem; color: var(--text-muted); }
 
 .form-actions { display: flex; gap: 0.5rem; }
 

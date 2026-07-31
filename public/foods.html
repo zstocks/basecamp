@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Basecamp — Foods</title>
+  <link rel="stylesheet" href="/styles.css">
+  <!-- favicons & PWA -->
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/svg+xml" href="/icons/favicon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="theme-color" content="#0d1117">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Basecamp">
+</head>
+<body>
+  <header>
+    <h1>Basecamp</h1>
+    <nav class="nav">
+      <a href="/">Dashboard</a>
+      <a href="/habits.html">Habits</a>
+      <a href="/workouts.html">Workouts</a>
+      <a href="/foods.html" class="active" aria-current="page">Meals</a>
+      <a href="/stats.html">Stats</a>
+      <a href="/settings.html">Settings</a>
+    </nav>
+    <button id="logout-btn" class="ghost">Log out</button>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2 id="form-title">Add a food</h2>
+      <form id="food-form" class="form">
+        <input type="hidden" id="food-id">
+
+        <div class="field">
+          <label for="name">Name</label>
+          <input type="text" id="name" required maxlength="120" autocomplete="off">
+        </div>
+
+        <div class="field">
+          <label for="serving_size">Serving size <span class="optional">(optional)</span></label>
+          <input type="text" id="serving_size" maxlength="60" autocomplete="off"
+                 placeholder="e.g. 1 cup (240 ml)">
+        </div>
+
+        <p class="field-hint">Nutrition is per one serving. <span class="optional">All optional.</span></p>
+        <div class="nutrition-grid">
+          <div class="field">
+            <label for="calories">Calories</label>
+            <input type="number" id="calories" min="0" step="1" inputmode="decimal" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="protein_g">Protein (g)</label>
+            <input type="number" id="protein_g" min="0" step="0.1" inputmode="decimal" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="carbs_g">Carbs (g)</label>
+            <input type="number" id="carbs_g" min="0" step="0.1" inputmode="decimal" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="fat_g">Fat (g)</label>
+            <input type="number" id="fat_g" min="0" step="0.1" inputmode="decimal" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="fiber_g">Fiber (g)</label>
+            <input type="number" id="fiber_g" min="0" step="0.1" inputmode="decimal" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="sugar_g">Sugar (g)</label>
+            <input type="number" id="sugar_g" min="0" step="0.1" inputmode="decimal" autocomplete="off">
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" id="submit-btn" class="primary">Add food</button>
+          <button type="button" id="cancel-btn" class="ghost" hidden>Cancel</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Foods</h2>
+      <ul class="manage-list" id="active-list"></ul>
+      <p class="empty" id="active-empty" hidden>No foods yet. Add one above.</p>
+    </section>
+
+    <section class="card" id="archived-card" hidden>
+      <h2>Archived</h2>
+      <ul class="manage-list" id="archived-list"></ul>
+    </section>
+  </main>
+
+  <script type="module" src="/foods.js"></script>
+</body>
+</html>
