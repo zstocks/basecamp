@@ -42,7 +42,7 @@ function assertQuantity(q) {
 // planned rows carry LIVE food nutrition (JOIN foods) so edits flow through while planning.
 // LEFT JOIN so a slot whose food was hard-deleted still returns (with null nutrition).
 const plannedByDate = db.prepare(`
-  SELECT me.id, me.food_id, me.bucket, me.quantity, me.position,
+  SELECT me.id, me.date, me.food_id, me.bucket, me.quantity, me.position,
          f.name AS food_name, f.serving_size,
          f.calories, f.protein_g, f.carbs_g, f.fat_g, f.fiber_g, f.sugar_g
   FROM meal_entries me
@@ -51,7 +51,7 @@ const plannedByDate = db.prepare(`
   ORDER BY me.position ASC, me.id ASC
 `);
 const plannedById = db.prepare(`
-  SELECT me.id, me.food_id, me.bucket, me.quantity, me.position,
+  SELECT me.id, me.date, me.food_id, me.bucket, me.quantity, me.position,
          f.name AS food_name, f.serving_size,
          f.calories, f.protein_g, f.carbs_g, f.fat_g, f.fiber_g, f.sugar_g
   FROM meal_entries me

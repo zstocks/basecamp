@@ -12,6 +12,8 @@ import * as templatesRepo from './src/workoutTemplates.js';
 import * as scheduleRepo from './src/workoutSchedule.js';
 import * as sessionsRepo from './src/workoutSessions.js';
 import * as sessionSetsRepo from './src/sessionSets.js';
+import * as foodsRepo from './src/foods.js';
+import * as mealsRepo from './src/meals.js';
 import {
   signCookieValue,
   verifyPassword,
@@ -235,6 +237,68 @@ async function handleApi(req, res, pathname) {
   if (pathname === '/api/settings' && req.method === 'PUT') {
     const body = await readJsonBody(req);
     return sendJson(res, 200, settingsRepo.updateSettings(body));
+  }
+
+  // --- meals (Phase 3) ---
+
+  // GET /api/foods[?activeOnly=1]   (activeOnly is for the planner's food picker)
+  if (pathname === '/api/foods' && req.method === 'GET') {
+    const activeOnly = new URL(req.url, 'http://x').searchParams.get('activeOnly') === '1';
+    return sendJson(res, 200, foodsRepo.listFoods({ activeOnly }));
+  }
+  // POST /api/foods
+  if (pathname === '/api/foods' && req.method === 'POST') {
+    const body = await readJsonBody(req);
+    return sendJson(res, 201, foodsRepo.createFood(body));
+  }
+  // GET /api/foods/:id
+  const foodMatch = pathname.match(/^\/api\/foods\/(\d+)$/);
+  if (foodMatch && req.method === 'GET') {
+    const food = foodsRepo.getFood(Number(foodMatch[1]));
+    if (!food) return sendJson(res, 404, { error: 'Food not found' });
+    return sendJson(res, 200, food);
+  }
+  // PUT /api/foods/:id   (soft-delete via { active: false })
+  if (foodMatch && req.method === 'PUT') {
+    const body = await readJsonBody(req);
+    const food = foodsRepo.updateFood(Number(foodMatch[1]), body);
+    if (!food) return sendJson(res, 404, { error: 'Food not found' });
+    return sendJson(res, 200, food);
+  }
+
+  // GET /api/meals?date=YYYY-MM-DD  → { date, planned, eaten, logged }
+  if (pathname === '/api/meals' && req.method === 'GET') {
+    const date = new URL(req.url, 'http://x').searchParams.get('date');
+    if (!date) return sendJson(res, 400, { error: 'date query param required' });
+    return sendJson(res, 200, mealsRepo.getDay(date));
+  }
+  // POST /api/meals/log { date }  → snapshot the plan into eaten actuals; returns fresh day
+  if (pathname === '/api/meals/log' && req.method === 'POST') {
+    const body = await readJsonBody(req);
+    if (!body.date) return sendJson(res, 400, { error: 'date is required' });
+    return sendJson(res, 200, mealsRepo.logDay(body.date));
+  }
+
+  // POST /api/meal-entries  → slot a food into a day's bucket; returns the fresh day
+  if (pathname === '/api/meal-entries' && req.method === 'POST') {
+    const body = await readJsonBody(req);
+    const entry = mealsRepo.addPlannedEntry(body);
+    return sendJson(res, 201, mealsRepo.getDay(entry.date));
+  }
+  // PUT/DELETE /api/meal-entries/:id  → adjust or remove a planned slot; returns fresh day
+  const mealEntryMatch = pathname.match(/^\/api\/meal-entries\/(\d+)$/);
+  if (mealEntryMatch && req.method === 'PUT') {
+    const body = await readJsonBody(req);
+    const entry = mealsRepo.updatePlannedEntry(Number(mealEntryMatch[1]), body);
+    if (!entry) return sendJson(res, 404, { error: 'Meal entry not found' });
+    return sendJson(res, 200, mealsRepo.getDay(entry.date));
+  }
+  if (mealEntryMatch && req.method === 'DELETE') {
+    const id = Number(mealEntryMatch[1]);
+    const entry = mealsRepo.getPlannedEntry(id);
+    if (!entry) return sendJson(res, 404, { error: 'Meal entry not found' });
+    mealsRepo.deletePlannedEntry(id);
+    return sendJson(res, 200, mealsRepo.getDay(entry.date));
   }
 
   return sendJson(res, 404, { error: 'Not found' });
