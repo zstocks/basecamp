@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Basecamp — Settings</title>
+  <title>Basecamp — Plan</title>
   <link rel="stylesheet" href="/styles.css">
   <!-- favicons & PWA -->
   <link rel="icon" href="/favicon.ico" sizes="any">
@@ -25,41 +25,39 @@
       <a href="/">Dashboard</a>
       <a href="/habits.html">Habits</a>
       <a href="/workouts.html">Workouts</a>
-      <a href="/meals.html">Meals</a>
+      <a href="/meals.html" class="active" aria-current="page">Meals</a>
       <a href="/stats.html">Stats</a>
-      <a href="/settings.html" class="active" aria-current="page">Settings</a>
+      <a href="/settings.html">Settings</a>
     </nav>
     <button id="logout-btn" class="ghost">Log out</button>
   </header>
 
   <main>
+    <nav class="subnav">
+      <a href="/meals.html" class="active" aria-current="page">Plan</a>
+      <a href="/foods.html">Foods</a>
+    </nav>
+
     <section class="card">
-      <h2>Targets</h2>
-      <p class="hint">Leave a field blank to clear it. These drive the dashboard goals and (later) trend charts.</p>
-      <form id="settings-form" class="form">
-        <div class="field">
-          <label for="goal_weight">Goal weight (lb)</label>
-          <input type="number" id="goal_weight" step="0.1" min="0" placeholder="—">
+      <div class="date-nav">
+        <button id="prev-day" class="ghost" aria-label="Previous day">‹</button>
+        <div class="date-center">
+          <span id="date-display" class="date-display"></span>
+          <button id="today-btn" class="ghost" hidden>Today</button>
         </div>
-        <div class="field">
-          <label for="target_calories">Daily calories</label>
-          <input type="number" id="target_calories" step="1" min="0" placeholder="—">
-        </div>
-        <div class="field">
-          <label for="target_protein_g">Daily protein (g)</label>
-          <input type="number" id="target_protein_g" step="1" min="0" placeholder="—">
-        </div>
-        <div class="field">
-          <label for="target_water_ml">Daily water (ml)</label>
-          <input type="number" id="target_water_ml" step="1" min="0" placeholder="—">
-        </div>
-        <div class="form-actions">
-          <button type="submit" class="primary">Save targets</button>
-        </div>
-      </form>
+        <button id="next-day" class="ghost" aria-label="Next day">›</button>
+      </div>
     </section>
+
+    <section class="card">
+      <h2 class="totals-head">Totals<span id="logged-badge" class="logged-badge" hidden> · Logged ✓</span></h2>
+      <div id="rollup"></div>
+      <p class="hint">Planned totals vs your targets. Set targets in Settings; log the day from the Dashboard.</p>
+    </section>
+
+    <div id="buckets"></div>
   </main>
 
-  <script type="module" src="/settings.js"></script>
+  <script type="module" src="/meals.js"></script>
 </body>
 </html>

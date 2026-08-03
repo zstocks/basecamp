@@ -8,6 +8,7 @@
   --accent: #46c46c;
   --accent-text: #0d1117;
   --danger: #f85149;
+  --warn: #d29922;
   --radius: 8px;
   --radius-lg: 12px;
 }
@@ -323,3 +324,64 @@ button.danger:hover { background: var(--danger); color: var(--accent-text); bord
 .toast-error::before { content: "⚠ "; color: var(--danger); }
 .toast-success { border-color: var(--accent); }
 .toast-success::before { content: "✓ "; color: var(--accent); }
+
+/* --- meal planner (Phase 3) --- */
+
+/* date navigation */
+.date-nav { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.date-nav button { padding: 0.4rem 0.9rem; font-size: 1.1rem; line-height: 1; }
+.date-center { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; }
+.date-display { font-weight: 600; }
+.date-center #today-btn { padding: 0.2rem 0.6rem; font-size: 0.8rem; }
+
+/* nutrient rollup vs targets (shared: planner + dashboard) */
+.rollup { display: flex; flex-direction: column; }
+.rollup-row { display: grid; grid-template-columns: 1fr auto auto; gap: 0.75rem;
+              align-items: baseline; padding: 0.4rem 0; border-bottom: 1px solid var(--border); }
+.rollup-row:last-child { border-bottom: none; }
+.rollup-name { font-size: 0.9rem; }
+.rollup-dir { color: var(--text-muted); font-size: 0.8rem; }
+.rollup-value { font-variant-numeric: tabular-nums; }
+.rollup-note { font-size: 0.8rem; color: var(--text-muted); min-width: 4.75rem; text-align: right; }
+.rollup-ok .rollup-note { color: var(--accent); }
+.rollup-over .rollup-note { color: var(--danger); }
+.rollup-under .rollup-note { color: var(--warn); }
+.totals-head { display: flex; align-items: baseline; gap: 0.25rem; }
+.logged-badge { font-size: 0.8rem; font-weight: 400; color: var(--accent); }
+
+/* bucket cards */
+.meal-bucket { padding-top: 0.85rem; }
+.bucket-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem;
+               margin-bottom: 0.5rem; }
+.bucket-head h3 { margin: 0; font-size: 1rem; }
+.bucket-sub { font-size: 0.8rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.bucket-empty { font-size: 0.85rem; margin: 0 0 0.5rem; }
+.bucket-entries { list-style: none; padding: 0; margin: 0 0 0.6rem;
+                  display: flex; flex-direction: column; gap: 0.4rem; }
+.bucket-entry { display: flex; align-items: center; gap: 0.6rem;
+                padding: 0.5rem 0.6rem; background: var(--bg);
+                border: 1px solid var(--border); border-radius: var(--radius); }
+.entry-qty { width: 3.75rem; flex-shrink: 0; padding: 0.4rem 0.5rem;
+             background: var(--surface); color: var(--text);
+             border: 1px solid var(--border); border-radius: var(--radius);
+             font-size: 0.95rem; font-family: inherit; }
+.entry-qty:focus { outline: none; border-color: var(--accent); }
+.entry-info { display: flex; flex-direction: column; gap: 0.1rem; flex: 1; min-width: 0; }
+.entry-name { font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.entry-meta { font-size: 0.8rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.entry-remove { flex-shrink: 0; padding: 0.3rem 0.6rem; line-height: 1; color: var(--text-muted); }
+.entry-remove:hover { color: var(--danger); background: transparent; }
+
+/* add-food control */
+.bucket-add { display: flex; gap: 0.4rem; align-items: center; }
+.bucket-add .add-food { flex: 1; min-width: 0; padding: 0.5rem 0.55rem;
+                        background: var(--bg); color: var(--text);
+                        border: 1px solid var(--border); border-radius: var(--radius);
+                        font-size: 0.9rem; font-family: inherit; }
+.bucket-add .add-food:focus { outline: none; border-color: var(--accent); }
+.bucket-add .add-qty { width: 3.75rem; flex-shrink: 0; padding: 0.5rem 0.5rem;
+                       background: var(--bg); color: var(--text);
+                       border: 1px solid var(--border); border-radius: var(--radius);
+                       font-size: 0.9rem; font-family: inherit; }
+.bucket-add .add-qty:focus { outline: none; border-color: var(--accent); }
+.bucket-add .add-btn { flex-shrink: 0; }
