@@ -116,14 +116,14 @@ function entryRow(e) {
   const li = document.createElement('li');
   li.className = 'bucket-entry';
 
-  const qty = document.createElement('input');
-  qty.type = 'number';
-  qty.className = 'entry-qty';
-  qty.min = '0.1';
-  qty.step = '0.1';
-  qty.value = e.quantity;
-  qty.setAttribute('aria-label', `Servings of ${e.food_name ?? 'food'}`);
-  qty.addEventListener('change', () => changeQty(e, qty));
+  // Quantity shows as a finished line ("1.5 ×"); tap it to edit inline.
+  const qtyBtn = document.createElement('button');
+  qtyBtn.type = 'button';
+  qtyBtn.className = 'entry-qty-display';
+  qtyBtn.textContent = `${fmt(e.quantity)} ×`;
+  qtyBtn.setAttribute('aria-label',
+    `Change servings of ${e.food_name ?? 'food'} (currently ${fmt(e.quantity)})`);
+  qtyBtn.addEventListener('click', () => beginQtyEdit(qtyBtn, e));
 
   const info = document.createElement('div');
   info.className = 'entry-info';
@@ -142,8 +142,49 @@ function entryRow(e) {
   remove.setAttribute('aria-label', `Remove ${e.food_name ?? 'food'}`);
   remove.addEventListener('click', () => removeEntry(e));
 
-  li.append(qty, info, remove);
+  li.append(qtyBtn, info, remove);
   return li;
+}
+
+// Swap the quantity label for an input; commit on blur/Enter, cancel on Escape.
+// Every exit path re-renders the day, which restores the static line.
+function beginQtyEdit(qtyBtn, e) {
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.className = 'entry-qty';
+  input.min = '0.1';
+  input.step = '0.1';
+  input.value = e.quantity;
+  input.setAttribute('aria-label', `Servings of ${e.food_name ?? 'food'}`);
+
+  let settled = false;
+  const revert = () => { if (!settled) { settled = true; render(); } };
+  const commit = async () => {
+    if (settled) return;
+    settled = true;
+    const quantity = Number(input.value);
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      showError(new Error('Servings must be positive'));
+      return render();                       // restore the previous value
+    }
+    if (quantity === Number(e.quantity)) return render();   // unchanged
+    try {
+      setDay(await api.put(`/api/meal-entries/${e.id}`, { quantity }));
+    } catch (err) {
+      showError(err);
+      render();
+    }
+  };
+
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter') { ev.preventDefault(); input.blur(); }
+    else if (ev.key === 'Escape') { ev.preventDefault(); revert(); }
+  });
+
+  qtyBtn.replaceWith(input);
+  input.focus();
+  input.select();
 }
 
 function addControl(bucketKey) {
@@ -199,19 +240,6 @@ async function addEntry(bucket, select, qtyEl) {
   try {
     setDay(await api.post('/api/meal-entries', { date: selectedDate, bucket, food_id, quantity }));
     showSuccess('Added');
-  } catch (err) {
-    showError(err);
-  }
-}
-
-async function changeQty(entry, qtyEl) {
-  const quantity = Number(qtyEl.value);
-  if (!Number.isFinite(quantity) || quantity <= 0) {
-    qtyEl.value = entry.quantity;   // revert the input
-    return showError(new Error('Servings must be positive'));
-  }
-  try {
-    setDay(await api.put(`/api/meal-entries/${entry.id}`, { quantity }));
   } catch (err) {
     showError(err);
   }

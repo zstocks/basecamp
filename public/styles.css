@@ -361,6 +361,15 @@ button.danger:hover { background: var(--danger); color: var(--accent-text); bord
 .bucket-entry { display: flex; align-items: center; gap: 0.6rem;
                 padding: 0.5rem 0.6rem; background: var(--bg);
                 border: 1px solid var(--border); border-radius: var(--radius); }
+/* quantity as a tappable label ("1.5 ×") — looks like text, edits on tap */
+.entry-qty-display { flex-shrink: 0; min-width: 3rem; text-align: left;
+             padding: 0.3rem 0.15rem; background: transparent;
+             border: none; border-bottom: 1px dashed var(--border); border-radius: 0;
+             color: var(--text); font-size: 0.95rem; font-family: inherit;
+             font-variant-numeric: tabular-nums; cursor: pointer; }
+.entry-qty-display:hover { background: transparent; color: var(--accent);
+             border-bottom-color: var(--accent); }
+/* the inline edit input that replaces the label on tap */
 .entry-qty { width: 3.75rem; flex-shrink: 0; padding: 0.4rem 0.5rem;
              background: var(--surface); color: var(--text);
              border: 1px solid var(--border); border-radius: var(--radius);
