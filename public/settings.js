@@ -1,7 +1,12 @@
 import { api } from '/api.js';
 import { showError, showSuccess } from '/toast.js';
 
-const FIELDS = ['goal_weight', 'target_calories', 'target_protein_g', 'target_water_ml'];
+const FIELDS = [
+  'goal_weight',
+  'target_calories', 'target_protein_g', 'target_carbs_g',
+  'target_fat_g', 'target_fiber_g', 'target_sugar_g',
+  'target_water_ml',
+];
 
 const form = document.getElementById('settings-form');
 
