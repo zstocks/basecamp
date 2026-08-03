@@ -349,6 +349,11 @@ button.danger:hover { background: var(--danger); color: var(--accent-text); bord
 .totals-head { display: flex; align-items: baseline; gap: 0.25rem; }
 .logged-badge { font-size: 0.8rem; font-weight: 400; color: var(--accent); }
 
+/* dashboard "Today's food" actions */
+.meals-actions { display: flex; align-items: center; gap: 0.9rem; margin-top: 0.85rem; }
+.meals-actions a { color: var(--text-muted); font-size: 0.9rem; }
+.meals-actions a:hover { color: var(--text); }
+
 /* bucket cards */
 .meal-bucket { padding-top: 0.85rem; }
 .bucket-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem;

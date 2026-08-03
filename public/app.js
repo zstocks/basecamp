@@ -1,5 +1,6 @@
 import { api } from '/api.js';
 import { showError, showSuccess } from '/toast.js';
+import { renderRollup } from '/rollup.js';
 
 const today = ymd(new Date());
 const todayDow = new Date().getDay();   // 0=Sun..6=Sat
@@ -11,6 +12,7 @@ let settings = null;
 let weekData = [];      // [{ date, dow, scheduled, doneCount, summit }]
 let todaysWorkouts = [];  // schedule entries for today's weekday
 let todaysSessions = [];  // workout_sessions for today
+let mealDay = null;       // GET /api/meals?date=today → { planned, eaten, logged }
 
 init().catch(showError);
 
@@ -19,6 +21,7 @@ async function init() {
   renderTodayHeader();
   renderHabits();
   renderWorkouts();
+  renderMeals();
   renderMetrics();
   renderWeek();
   renderStreak();
@@ -28,12 +31,13 @@ async function init() {
 async function loadData() {
   const dates = lastNDates(7); // index 0 = today, newest first
 
-  const [habitsRes, settingsRes, metricsRes, scheduleRes, sessionsRes, ...logsByDate] = await Promise.all([
+  const [habitsRes, settingsRes, metricsRes, scheduleRes, sessionsRes, mealsRes, ...logsByDate] = await Promise.all([
     api.get('/api/habits'),
     api.get('/api/settings'),
     api.get(`/api/body-metrics?date=${today}`),
     api.get(`/api/workout-schedule?weekday=${todayDow}`),
     api.get(`/api/workout-sessions?date=${today}`),
+    api.get(`/api/meals?date=${today}`),
     ...dates.map(d => api.get(`/api/habit-logs?date=${d}`)),
   ]);
 
@@ -42,6 +46,7 @@ async function loadData() {
   todaysMetrics = metricsRes;
   todaysWorkouts = scheduleRes;
   todaysSessions = sessionsRes;
+  mealDay = mealsRes;
   todaysLogs = logsByDate[0];
 
   weekData = dates.map((date, i) => {
@@ -411,7 +416,56 @@ function renderStreak() {
   document.getElementById('streak-number').textContent = streak;
 }
 
+// Today's food: planned totals vs targets until logged, then the committed eaten totals.
+function renderMeals() {
+  const statusEl = document.getElementById('meals-status');
+  const rollupEl = document.getElementById('meals-rollup');
+  const emptyEl = document.getElementById('meals-empty');
+  const actionsEl = document.getElementById('meals-actions');
+  const logBtn = document.getElementById('log-food-btn');
+
+  const hasPlanned = countEntries(mealDay.planned) > 0;
+  const hasEaten = mealDay.logged;
+
+  if (!hasPlanned && !hasEaten) {
+    rollupEl.replaceChildren();
+    statusEl.textContent = '';
+    emptyEl.hidden = false;
+    actionsEl.hidden = true;
+    return;
+  }
+  emptyEl.hidden = true;
+
+  const source = hasEaten ? mealDay.eaten : mealDay.planned;
+  rollupEl.replaceChildren(renderRollup(source.rollup));
+  statusEl.textContent = hasEaten ? ' · Logged ✓' : ' · Planned';
+
+  // The log button only makes sense when there's a plan to snapshot.
+  actionsEl.hidden = !hasPlanned;
+  logBtn.textContent = hasEaten ? "Re-log today's food" : "Log Today's Food";
+}
+
+function countEntries(side) {
+  return Object.values(side.buckets).reduce((n, arr) => n + arr.length, 0);
+}
+
+async function logFood() {
+  const logBtn = document.getElementById('log-food-btn');
+  logBtn.disabled = true;
+  try {
+    mealDay = await api.post('/api/meals/log', { date: today });
+    renderMeals();
+    showSuccess("Logged today's food");
+  } catch (err) {
+    showError(err);
+  } finally {
+    logBtn.disabled = false;
+  }
+}
+
 function bindEvents() {
+  document.getElementById('log-food-btn').addEventListener('click', logFood);
+
   document.getElementById('habits-list').addEventListener('change', async (e) => {
     if (!e.target.matches('input[type="checkbox"]')) return;
     const habitId = Number(e.target.dataset.habitId);
