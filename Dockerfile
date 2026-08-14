@@ -4,7 +4,7 @@ WORKDIR /app
 # Alpine has no prebuilt better-sqlite3 binary — build it from source.
 RUN apk add --no-cache python3 make g++
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev --ignore-scripts && npm rebuild better-sqlite3
 
 # --- runtime stage: no toolchain, just node + the compiled modules ---
 FROM node:22-alpine
