@@ -1,0 +1,13 @@
+[Unit]
+Description=Weekly Basecamp restore drill
+Documentation=file:/home/zstox/apps/basecamp/docs/BACKUP.md
+
+[Timer]
+# Sundays at 04:00 -- half an hour after the daily backup, so it verifies a
+# fresh snapshot (and the one just promoted to weekly).
+OnCalendar=Sun *-*-* 04:00:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

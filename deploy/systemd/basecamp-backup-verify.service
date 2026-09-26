@@ -1,0 +1,15 @@
+[Unit]
+Description=Basecamp restore drill (download newest off-site backup and prove it restores)
+Documentation=file:/home/zstox/apps/basecamp/docs/BACKUP.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/home/zstox/apps/basecamp/scripts/verify-backup.sh
+
+StandardOutput=journal
+StandardError=journal
+
+TimeoutStartSec=600

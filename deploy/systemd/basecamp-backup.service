@@ -1,0 +1,19 @@
+[Unit]
+Description=Basecamp database backup (snapshot, verify, push to Storage Box)
+Documentation=file:/home/zstox/apps/basecamp/docs/BACKUP.md
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Runs as root: the database files are root-owned (written by the container)
+# and the Storage Box key lives at /root/.ssh/box_basecamp.
+User=root
+ExecStart=/home/zstox/apps/basecamp/scripts/backup.sh --reason scheduled
+
+# Output goes to the journal: journalctl -u basecamp-backup.service
+StandardOutput=journal
+StandardError=journal
+
+# A backup that hangs on an unreachable storage box must not hang forever.
+TimeoutStartSec=600

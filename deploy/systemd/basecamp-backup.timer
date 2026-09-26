@@ -1,0 +1,19 @@
+[Unit]
+Description=Daily Basecamp database backup
+Documentation=file:/home/zstox/apps/basecamp/docs/BACKUP.md
+
+[Timer]
+# 03:30 daily. Early enough to be quiet, late enough that a day's logging is in.
+OnCalendar=*-*-* 03:30:00
+
+# Persistent: if the VPS was down at 03:30, run as soon as it is back up rather
+# than silently skipping the day. This is the difference between "we back up
+# daily" and "we back up daily unless something went wrong", which is precisely
+# when you want a backup.
+Persistent=true
+
+# Avoid hammering the storage box at the same second as every other timer.
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target
