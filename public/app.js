@@ -5,11 +5,18 @@ import { renderRollup } from '/rollup.js';
 const today = ymd(new Date());
 const todayDow = new Date().getDay();   // 0=Sun..6=Sat
 
+// How much history the dashboard pulls up front. This used to be 7, a holdover
+// from when Basecamp was a weekly tracker — which silently capped the streak at
+// 7 days. One range request covers the window; if a streak runs past it we fetch
+// older chunks on demand (see extendStreak), so the streak has no ceiling.
+const DAY_WINDOW = 90;
+const MAX_EXTRA_CHUNKS = 20;   // ~5 years of extension before we stop walking
+
 let habits = [];
 let todaysLogs = [];
 let todaysMetrics = null;
 let settings = null;
-let weekData = [];      // [{ date, dow, scheduled, doneCount, summit }]
+let dayData = [];       // newest first: [{ date, dow, scheduled, doneCount, summit, logCount }]
 let todaysWorkouts = [];  // schedule entries for today's weekday
 let todaysSessions = [];  // workout_sessions for today
 let mealDay = null;       // GET /api/meals?date=today → { planned, eaten, logged }
@@ -29,16 +36,19 @@ async function init() {
 }
 
 async function loadData() {
-  const dates = lastNDates(7); // index 0 = today, newest first
+  const dates = lastNDates(DAY_WINDOW); // index 0 = today, newest first
+  const windowStart = dates[dates.length - 1];
 
-  const [habitsRes, settingsRes, metricsRes, scheduleRes, sessionsRes, mealsRes, ...logsByDate] = await Promise.all([
+  const [habitsRes, settingsRes, metricsRes, scheduleRes, sessionsRes, mealsRes, logRows] = await Promise.all([
     api.get('/api/habits'),
     api.get('/api/settings'),
     api.get(`/api/body-metrics?date=${today}`),
     api.get(`/api/workout-schedule?weekday=${todayDow}`),
     api.get(`/api/workout-sessions?date=${today}`),
     api.get(`/api/meals?date=${today}`),
-    ...dates.map(d => api.get(`/api/habit-logs?date=${d}`)),
+    // One range request. This was previously one request per day, so widening
+    // the window from 7 to 90 days makes the dashboard *fewer* requests, not more.
+    api.get(`/api/habit-logs?from=${windowStart}&to=${today}`),
   ]);
 
   habits = habitsRes;
@@ -47,15 +57,32 @@ async function loadData() {
   todaysWorkouts = scheduleRes;
   todaysSessions = sessionsRes;
   mealDay = mealsRes;
-  todaysLogs = logsByDate[0];
 
-  weekData = dates.map((date, i) => {
+  dayData = buildDays(dates, logRows);
+  todaysLogs = groupByDate(logRows).get(today) ?? [];
+}
+
+function groupByDate(logRows) {
+  const byDate = new Map();
+  for (const row of logRows) {
+    if (!byDate.has(row.date)) byDate.set(row.date, []);
+    byDate.get(row.date).push(row);
+  }
+  return byDate;
+}
+
+// Turn raw log rows into one summary per date. Dates come in newest-first and
+// come back in the same order.
+function buildDays(dates, logRows) {
+  const byDate = groupByDate(logRows);
+  return dates.map(date => {
+    const logs = byDate.get(date) ?? [];
     const dow = new Date(date + 'T00:00:00').getDay();
     const scheduled = habits.filter(h => isScheduledForDay(h, dow));
-    const doneIds = new Set(logsByDate[i].filter(l => l.done === 1).map(l => l.habit_id));
+    const doneIds = new Set(logs.filter(l => l.done === 1).map(l => l.habit_id));
     const doneCount = scheduled.filter(h => doneIds.has(h.id)).length;
     const summit = scheduled.length === 0 ? null : (doneCount / scheduled.length) >= 0.5;
-    return { date, dow, scheduled, doneCount, summit };
+    return { date, dow, scheduled, doneCount, summit, logCount: logs.length };
   });
 }
 
@@ -392,8 +419,8 @@ function renderMetrics() {
 function renderWeek() {
   const strip = document.getElementById('week-strip');
   strip.innerHTML = '';
-  // weekData is newest first; render oldest first so the strip reads left-to-right
-  for (const day of [...weekData].reverse()) {
+  // dayData is newest first; the strip shows the last 7, oldest-first so it reads left-to-right
+  for (const day of dayData.slice(0, 7).reverse()) {
     const li = document.createElement('li');
     li.className = day.summit === true ? 'summit'
                  : day.summit === false ? 'broken'
@@ -407,13 +434,66 @@ function renderWeek() {
 }
 
 function renderStreak() {
-  // Walk from today backwards: rest days pass through, broken days stop the count.
+  const { streak, ranOut } = streakWithin(dayData);
+  setStreakNumber(streak);
+
+  // The streak consumed the whole loaded window without hitting a broken day,
+  // so it may well continue further back. Paint what we know now and keep
+  // walking in the background rather than blocking the dashboard on it.
+  if (ranOut && dayData.length) {
+    extendStreak(streak, dayData[dayData.length - 1].date).catch(showError);
+  }
+}
+
+// Walk newest-first: rest days (summit === null) pass through without extending
+// or breaking; a broken day stops the count. ranOut means we reached the end of
+// the supplied days still on an unbroken run.
+function streakWithin(days) {
   let streak = 0;
-  for (const day of weekData) {
-    if (day.summit === false) break;
+  for (const day of days) {
+    if (day.summit === false) return { streak, ranOut: false };
     if (day.summit === true) streak++;
   }
-  document.getElementById('streak-number').textContent = streak;
+  return { streak, ranOut: true };
+}
+
+async function extendStreak(streak, oldestLoaded) {
+  for (let i = 0; i < MAX_EXTRA_CHUNKS; i++) {
+    const days = await loadOlderDays(oldestLoaded);
+
+    // No logs at all that far back means we've reached the start of your
+    // history — stop, rather than counting empty days forever.
+    if (!days.length || days.every(d => d.logCount === 0)) return;
+
+    const { streak: more, ranOut } = streakWithin(days);
+    streak += more;
+    setStreakNumber(streak);
+    if (!ranOut) return;
+
+    oldestLoaded = days[days.length - 1].date;
+  }
+}
+
+// Fetch the DAY_WINDOW days immediately before `beforeDate`.
+async function loadOlderDays(beforeDate) {
+  const end = new Date(beforeDate + 'T00:00:00');
+  end.setDate(end.getDate() - 1);
+  const start = new Date(end);
+  start.setDate(start.getDate() - (DAY_WINDOW - 1));
+
+  const from = ymd(start);
+  const to = ymd(end);
+  const rows = await api.get(`/api/habit-logs?from=${from}&to=${to}`);
+
+  const dates = [];
+  for (let d = new Date(end); ymd(d) >= from; d.setDate(d.getDate() - 1)) {
+    dates.push(ymd(d));
+  }
+  return buildDays(dates, rows);
+}
+
+function setStreakNumber(n) {
+  document.getElementById('streak-number').textContent = n;
 }
 
 // Today's food: planned totals vs targets until logged, then the committed eaten totals.

@@ -8,6 +8,18 @@ export function getLogsForDate(date) {
   `).all(date);
 }
 
+// Inclusive date range, newest first. One request instead of one-per-day:
+// the dashboard needs months of history to compute an uncapped streak, and
+// the stats page needs the same rows to chart consistency over time.
+export function getLogsForRange(from, to) {
+  return db.prepare(`
+    SELECT habit_id, date, done
+    FROM habit_logs
+    WHERE date >= ? AND date <= ?
+    ORDER BY date DESC
+  `).all(from, to);
+}
+
 export function setHabitLog({ habit_id, date, done }) {
   if (!habit_id || !date) {
     throw Object.assign(new Error('habit_id and date are required'), { status: 400 });

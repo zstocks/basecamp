@@ -109,10 +109,18 @@ async function handleApi(req, res, pathname) {
   }
 
   // GET /api/habit-logs?date=YYYY-MM-DD
+  // GET /api/habit-logs?date=YYYY-MM-DD    → logs for one day
+  // GET /api/habit-logs?from=...&to=...    → logs across an inclusive range
   if (pathname === '/api/habit-logs' && req.method === 'GET') {
-    const date = new URL(req.url, 'http://x').searchParams.get('date');
-    if (!date) return sendJson(res, 400, { error: 'date query param required' });
-    return sendJson(res, 200, logsRepo.getLogsForDate(date));
+    const params = new URL(req.url, 'http://x').searchParams;
+    const date = params.get('date');
+    if (date) return sendJson(res, 200, logsRepo.getLogsForDate(date));
+
+    const from = params.get('from');
+    const to = params.get('to');
+    if (from && to) return sendJson(res, 200, logsRepo.getLogsForRange(from, to));
+
+    return sendJson(res, 400, { error: 'date, or both from and to, query params required' });
   }
   // PUT /api/habit-logs
   if (pathname === '/api/habit-logs' && req.method === 'PUT') {
