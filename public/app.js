@@ -1,6 +1,10 @@
 import { api } from '/api.js';
 import { showError, showSuccess } from '/toast.js';
 import { renderRollup } from '/rollup.js';
+import {
+  buildResolver, scheduledOn, visibleOn,
+  walkStreak, summitPredicate, perfectPredicate, habitPredicate,
+} from '/streaks.js';
 
 const today = ymd(new Date());
 const todayDow = new Date().getDay();   // 0=Sun..6=Sat
@@ -13,10 +17,11 @@ const DAY_WINDOW = 90;
 const MAX_EXTRA_CHUNKS = 20;   // ~5 years of extension before we stop walking
 
 let habits = [];
+let resolver = null;    // resolves each habit's definition as of a given date
 let todaysLogs = [];
 let todaysMetrics = null;
 let settings = null;
-let dayData = [];       // newest first: [{ date, dow, scheduled, doneCount, summit, logCount }]
+let dayData = [];       // newest first: [{ date, dow, scheduled, doneIds, doneCount, logCount }]
 let todaysWorkouts = [];  // schedule entries for today's weekday
 let todaysSessions = [];  // workout_sessions for today
 let mealDay = null;       // GET /api/meals?date=today → { planned, eaten, logged }
@@ -39,8 +44,9 @@ async function loadData() {
   const dates = lastNDates(DAY_WINDOW); // index 0 = today, newest first
   const windowStart = dates[dates.length - 1];
 
-  const [habitsRes, settingsRes, metricsRes, scheduleRes, sessionsRes, mealsRes, logRows] = await Promise.all([
+  const [habitsRes, versionsRes, settingsRes, metricsRes, scheduleRes, sessionsRes, mealsRes, logRows] = await Promise.all([
     api.get('/api/habits'),
+    api.get('/api/habit-versions'),
     api.get('/api/settings'),
     api.get(`/api/body-metrics?date=${today}`),
     api.get(`/api/workout-schedule?weekday=${todayDow}`),
@@ -52,6 +58,7 @@ async function loadData() {
   ]);
 
   habits = habitsRes;
+  resolver = buildResolver(versionsRes);
   settings = settingsRes;
   todaysMetrics = metricsRes;
   todaysWorkouts = scheduleRes;
@@ -78,22 +85,13 @@ function buildDays(dates, logRows) {
   return dates.map(date => {
     const logs = byDate.get(date) ?? [];
     const dow = new Date(date + 'T00:00:00').getDay();
-    const scheduled = habits.filter(h => isScheduledForDay(h, dow));
+    // Scheduling comes from the definition in effect ON THAT DATE, so editing a
+    // habit today cannot change whether an earlier day summited.
+    const scheduled = scheduledOn(habits, resolver, date);
     const doneIds = new Set(logs.filter(l => l.done === 1).map(l => l.habit_id));
     const doneCount = scheduled.filter(h => doneIds.has(h.id)).length;
-    const summit = scheduled.length === 0 ? null : (doneCount / scheduled.length) >= 0.5;
-    return { date, dow, scheduled, doneCount, summit, logCount: logs.length };
+    return { date, dow, scheduled, doneIds, doneCount, logCount: logs.length };
   });
-}
-
-function isScheduledForDay(habit, dow) {
-  if (!habit.active) return false;
-  if (habit.cadence_type === 'daily') return true;
-  if (habit.cadence_type === 'weekly') return true;  // shows every day; user picks when
-  if (habit.cadence_type === 'weekdays') {
-    return (habit.cadence_days || '').split(',').map(Number).includes(dow);
-  }
-  return false;
 }
 
 function renderTodayHeader() {
@@ -106,7 +104,9 @@ function renderHabits() {
   const empty = document.getElementById('habits-empty');
   list.innerHTML = '';
 
-  const scheduled = habits.filter(h => isScheduledForDay(h, todayDow));
+  // visibleOn, not scheduledOn: an "N x per week" habit is shown every day so
+  // you can tick it, even though it does not count toward today's percentage.
+  const scheduled = visibleOn(habits, resolver, today);
   if (scheduled.length === 0) { empty.hidden = false; return; }
   empty.hidden = true;
 
@@ -124,6 +124,18 @@ function renderHabits() {
     label.htmlFor = id;
     label.textContent = habit.name;   // setting textContent avoids XSS, no escape() needed
     li.append(checkbox, label);
+
+    // Per-habit run, measured only within the loaded window — a chip is not
+    // worth a request per habit to extend, unlike the headline streaks.
+    const { streak } = walkStreak(dayData, habitPredicate(habit.id));
+    if (streak > 0) {
+      const chip = document.createElement('span');
+      chip.className = 'habit-streak';
+      chip.textContent = `${streak}`;
+      chip.title = `${streak} day${streak === 1 ? '' : 's'} in a row`;
+      li.append(chip);
+    }
+
     list.appendChild(li);
   }
 }
@@ -422,8 +434,9 @@ function renderWeek() {
   // dayData is newest first; the strip shows the last 7, oldest-first so it reads left-to-right
   for (const day of dayData.slice(0, 7).reverse()) {
     const li = document.createElement('li');
-    li.className = day.summit === true ? 'summit'
-                 : day.summit === false ? 'broken'
+    const summit = summitPredicate(day);
+    li.className = summit === true ? 'summit'
+                 : summit === false ? 'broken'
                  : 'rest';
     const dayLabel = new Date(day.date + 'T00:00:00')
       .toLocaleDateString('en-US', { weekday: 'narrow' });
@@ -434,30 +447,25 @@ function renderWeek() {
 }
 
 function renderStreak() {
-  const { streak, ranOut } = streakWithin(dayData);
-  setStreakNumber(streak);
+  // Two streaks, same walk, different predicates: the forgiving >=50% run that
+  // keeps momentum, and the strict all-habits-done run.
+  renderOneStreak('streak-number', summitPredicate);
+  renderOneStreak('perfect-number', perfectPredicate);
+}
+
+function renderOneStreak(elId, predicate) {
+  const { streak, ranOut } = walkStreak(dayData, predicate);
+  setNumber(elId, streak);
 
   // The streak consumed the whole loaded window without hitting a broken day,
   // so it may well continue further back. Paint what we know now and keep
   // walking in the background rather than blocking the dashboard on it.
   if (ranOut && dayData.length) {
-    extendStreak(streak, dayData[dayData.length - 1].date).catch(showError);
+    extendStreak(elId, predicate, streak, dayData[dayData.length - 1].date).catch(showError);
   }
 }
 
-// Walk newest-first: rest days (summit === null) pass through without extending
-// or breaking; a broken day stops the count. ranOut means we reached the end of
-// the supplied days still on an unbroken run.
-function streakWithin(days) {
-  let streak = 0;
-  for (const day of days) {
-    if (day.summit === false) return { streak, ranOut: false };
-    if (day.summit === true) streak++;
-  }
-  return { streak, ranOut: true };
-}
-
-async function extendStreak(streak, oldestLoaded) {
+async function extendStreak(elId, predicate, streak, oldestLoaded) {
   for (let i = 0; i < MAX_EXTRA_CHUNKS; i++) {
     const days = await loadOlderDays(oldestLoaded);
 
@@ -465,9 +473,9 @@ async function extendStreak(streak, oldestLoaded) {
     // history — stop, rather than counting empty days forever.
     if (!days.length || days.every(d => d.logCount === 0)) return;
 
-    const { streak: more, ranOut } = streakWithin(days);
+    const { streak: more, ranOut } = walkStreak(days, predicate);
     streak += more;
-    setStreakNumber(streak);
+    setNumber(elId, streak);
     if (!ranOut) return;
 
     oldestLoaded = days[days.length - 1].date;
@@ -492,8 +500,9 @@ async function loadOlderDays(beforeDate) {
   return buildDays(dates, rows);
 }
 
-function setStreakNumber(n) {
-  document.getElementById('streak-number').textContent = n;
+function setNumber(elId, n) {
+  const el = document.getElementById(elId);
+  if (el) el.textContent = n;
 }
 
 // Today's food: planned totals vs targets until logged, then the committed eaten totals.

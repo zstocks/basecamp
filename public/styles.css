@@ -40,9 +40,27 @@ header h1 { margin: 0; font-size: 1.25rem; }
 .nav a:hover { background: var(--surface-hover); color: var(--text); }
 .nav a.active { color: var(--text); background: var(--surface-hover); }
 
+.streaks { display: flex; align-items: baseline; gap: 1rem; }
 .streak { display: flex; align-items: baseline; gap: 0.4rem; }
 .streak-number { font-size: 1.5rem; font-weight: 700; color: var(--accent); }
 .streak-label { font-size: 0.85rem; color: var(--text-muted); }
+
+/* The perfect-day run is the harder number, so it reads as the rarer one —
+   gold against the everyday green, and smaller so it doesn't compete with
+   the headline streak. */
+.streak-perfect .streak-number { color: var(--warn); font-size: 1.2rem; }
+
+/* Per-habit run, shown inline next to the habit it belongs to. */
+.habit-streak {
+  margin-left: auto;
+  font-size: 0.75rem; font-weight: 600;
+  color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--warn) 30%, transparent);
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+  white-space: nowrap;
+}
 
 main {
   max-width: 640px; margin: 0 auto;

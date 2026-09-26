@@ -57,8 +57,19 @@ Also shipped beyond the original plan: login rate limiting (`src/rateLimit.js` +
   - `eaten` rows are a **snapshot** (`food_name` + frozen per-serving nutrition), like `session_sets`. `food_id` is a soft pointer (`ON DELETE SET NULL`); the snapshot is the source of truth.
 - Adds `target_carbs_g`, `target_fat_g`, `target_fiber_g`, `target_sugar_g` to `settings`. Floor/ceiling **direction is not stored** — it's hardcoded in the rollup (one tunable place): calories ceiling, protein floor, carbs ceiling, fat floor, fiber floor, sugar ceiling.
 
-## Streak rule (in `public/app.js`)
-A day "summits" if completed_habits ÷ scheduled_habits ≥ 0.5 (with at least one scheduled habit). Days with zero scheduled = rest — neither extend nor break. Streak = consecutive non-broken days ending today. Tunable in one place. **Workouts and meals do not currently affect it.**
+## Streak rules (in `public/streaks.js`)
+One walker, several predicates — shared by the dashboard and the stats page so they can't disagree. Tunable in one place.
+
+- **summit day** — `completed ÷ scheduled ≥ 0.5` (the forgiving headline streak).
+- **perfect day** — every scheduled habit completed (100%).
+- **rest day** — nothing scheduled; neither extends nor breaks a streak.
+- **per-habit** — consecutive days the habit was scheduled *and* done; days it wasn't scheduled pass through as rest, so a Tue/Thu habit isn't broken by Wednesday.
+
+Scheduling resolves against `habit_versions` — the definition in effect **on that date** — never the habit's current definition. That's what stops an edit today from rewriting whether last month's days summited.
+
+**`weekly` cadence ("N× per week") never counts toward a day's percentage.** It names no specific days, so counting it daily would penalise the days you legitimately skip it and make a 100% day unreachable. It stays *visible* on the dashboard every day (you pick when) but is measured per week. `daily` and `weekdays` behave exactly as you'd expect.
+
+The streak has **no ceiling** — the dashboard loads `DAY_WINDOW` (90) days and walks older chunks on demand. **Workouts and meals do not affect it.**
 
 ## What's next
 - ~~Step A — back up the database.~~ **Done 2026-09-26.** See "Backups" below.
