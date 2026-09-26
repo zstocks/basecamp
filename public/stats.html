@@ -35,6 +35,7 @@
   <main>
     <nav class="subnav">
       <a href="/stats.html?tab=habits" id="tab-habits">Habits</a>
+      <a href="/stats.html?tab=body" id="tab-body">Body</a>
       <a href="/stats.html?tab=workouts" id="tab-workouts">Workouts</a>
       <a href="/stats.html?tab=diet" id="tab-diet">Diet</a>
     </nav>
@@ -78,6 +79,40 @@
       <section class="card">
         <h2>Per habit</h2>
         <div class="habit-breakdown" id="habit-breakdown"></div>
+      </section>
+    </div>
+
+    <div id="section-body" hidden>
+      <section class="card">
+        <h2 class="totals-head">Weight
+          <span class="range-toggle" id="body-range">
+            <button type="button" data-days="30">30d</button>
+            <button type="button" data-days="90" class="active">90d</button>
+            <button type="button" data-days="365">1y</button>
+          </span>
+        </h2>
+        <div class="stat-grid">
+          <div class="stat">
+            <span class="stat-value" id="bd-current">—</span>
+            <span class="stat-label">latest</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value" id="bd-change">—</span>
+            <span class="stat-label">change in range</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value gold" id="bd-togoal">—</span>
+            <span class="stat-label">to goal</span>
+          </div>
+        </div>
+        <div class="chart-wrap" id="weight-chart"></div>
+        <p class="hint" id="bd-hint"></p>
+      </section>
+
+      <section class="card">
+        <h2>Water</h2>
+        <p class="hint" id="bd-water-summary">Loading…</p>
+        <div class="chart-wrap" id="water-chart"></div>
       </section>
     </div>
 

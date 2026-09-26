@@ -3,23 +3,21 @@
 A personal health tracker (habits, body metrics, cravings, workouts, meals) built as a learning project. Single-user, self-hosted on a Hetzner VPS.
 
 ## Where we are
-**Phases 1–3 are built and deployed.** Live at `basecamp.zacharystocks.com`, container healthy, running the latest commit (`065f3d6`).
+**Phases 1–3 are built and deployed.** Live at `basecamp.zacharystocks.com`, container healthy.
 
 - Phase 1 (habits, body metrics, cravings, settings, HMAC auth, dashboard, management UI, Docker deploy) — done.
 - Phase 2 (workouts: templates → weekly schedule → completion → set logging → drill-down stats) — done.
 - Phase 3 (meals: food library → planned meals → eaten log → daily calorie/macro rollup) — done.
-- Phase 4 (stats and trends) — **partially done.** `stats.html` exists with a Workouts tab (12-week consistency heatmap + per-exercise top-set progress). The **Habits tab and Diet tab are still `Coming soon` placeholders.**
+- Phase 4 (stats and trends) — **mostly done.** Habits, Body and Workouts tabs are built; **Diet is the last placeholder**. Also delivered here: permanent habit history (`habit_versions`), uncapped streaks, perfect-day and per-habit streaks, and the first test suite.
 
 Also shipped beyond the original plan: login rate limiting (`src/rateLimit.js` + an Nginx `limit_req` zone), a full favicon/PWA icon set and web manifest, and a `/health` endpoint used by the compose healthcheck.
 
 ### Known gaps (the honest list)
-- **Habits and Diet stats are unbuilt.** Two placeholder cards in `stats.html`.
+- **The Diet stats tab is unbuilt.** Needs a per-day rollup endpoint (`meal_entries` is single-date only) before calories/macros can be charted against targets.
 - **Cravings are write-only.** The dashboard POSTs to `/api/cravings` and nothing ever reads it back. There is a `GET /api/cravings` route with no UI behind it — you can log a craving but never see the pattern.
-- **No weight/trend history anywhere.** `body_metrics` accumulates but is only ever read for *today*. `goal_weight` is stored in settings and never compared against actuals. There are no charts in the app at all.
-- **Workouts and meals don't feed the streak.** The streak is habits-only (see "Streak rule").
-- **Test coverage is thin.** `npm test` runs `test/streaks.test.js` (11 tests, node's built-in runner, no dependencies) covering the scheduling and streak rules. Nothing else is covered — the data layer and HTTP routes have no tests.
-- **The local dev DB is stale** — it sits at migration `001` while production is at `003`. Starting the server locally will auto-apply `002` and `003`; expect that on first run.
-- **Dates are client-derived** (browser-local `ymd()`), while server defaults use `datetime('now')` (UTC). No `TZ` is set in compose. Harmless so far because the client supplies dates on writes, but worth knowing before adding server-side date logic.
+- **Workouts and meals don't feed the streak.** The streak is habits-only (see "Streak rules").
+- **Test coverage is partial.** `npm test` runs 22 tests (node's built-in runner, no dependencies) over `streaks.js` and `chart.js` — the scheduling/streak rules and the chart maths. The data layer, HTTP routes, and every other page have no tests.
+- **Dates are client-derived** (browser-local `ymd()`), while server defaults use `datetime('now')` (UTC). No `TZ` is set in compose. Harmless so far because the client supplies dates on writes, but worth knowing before adding server-side date logic — `habit_versions.effective_from` uses the server's date.
 
 ## Architecture
 - Node 22, custom HTTP server, **no framework** (no Express/Fastify/Koa). ESM throughout.
@@ -27,7 +25,8 @@ Also shipped beyond the original plan: login rate limiting (`src/rateLimit.js` +
 - HMAC-signed cookie auth from `APP_SECRET` + `APP_PASSWORD` env vars; 30-day cookie, `Secure` unless `COOKIE_SECURE=false`. Browser HTML requests without auth redirect to `/login.html`; everything else returns 401 JSON.
 - **Data layer** lives in `src/<domain>.js` — pure functions, no HTTP knowledge.
 - **HTTP layer** lives in `server.js` — routing, JSON parsing, auth gate, calls into the data layer. Flat `if (pathname === ... && req.method === ...)` chain plus regex matches for `/:id` routes.
-- **Frontend**: vanilla JS, dark theme, no build step. ES modules served from `public/`. One page per screen — `index.html` (dashboard), `habits.html`, `workouts.html` + `schedule.html`, `meals.html` + `foods.html`, `stats.html`, `settings.html` — sharing `api.js` (fetch wrapper), `toast.js` (notifications; no `alert()`), and `rollup.js` (nutrition totals).
+- **Frontend**: vanilla JS, dark theme, no build step. ES modules served from `public/`. One page per screen — `index.html` (dashboard), `habits.html`, `workouts.html` + `schedule.html`, `meals.html` + `foods.html`, `stats.html`, `settings.html` — sharing `api.js` (fetch wrapper), `toast.js` (notifications; no `alert()`), `rollup.js` (nutrition totals), `streaks.js` (scheduling + streak rules) and `chart.js` (inline-SVG line charts, no dependencies).
+- **Stats page** has four tabs via `?tab=`: Habits (streak tiles, 12-week heatmap, per-habit breakdown), Body (weight vs `goal_weight` with a 7-day average, water vs target, 30/90/365-day ranges), Workouts (consistency heatmap, per-exercise progress), Diet (not built yet).
 - **Migrations**: numbered `.sql` files in `migrations/`, applied at startup by `db.js` and tracked in a `_migrations` table.
 
 ## Conventions (don't break without sign-off)
@@ -50,16 +49,16 @@ Also shipped beyond the original plan: login rate limiting (`src/rateLimit.js` +
 - `workout_templates`, `template_exercises` (ordered by `position`, optional targets), `workout_schedule` (template → weekday, `UNIQUE(template_id, weekday)`), `workout_sessions` (`UNIQUE(date, template_id)`; `completed` is a flag, not mere row existence, so it can be un-checked; `template_id` is `ON DELETE SET NULL` so history survives template deletion), `session_sets`.
 - **`session_sets.exercise_name` is text, not a FK to `template_exercises`** — deliberate: history is a snapshot, immune to template edits/deletes.
 
-**Phase 4** — `004_habit_versions.sql`, `005_no_cascade_delete.sql`
-- `habit_versions` — append-only history of habit definitions; `UNIQUE(habit_id, effective_from)`. `habits` holds the *current* definition; versions are authoritative for any question about the past. Only scheduling-relevant edits create a version (a rename doesn't); two edits in one day upsert, since a day has one answer.
-- `005` rebuilds `habit_logs` and `habit_versions` to drop `ON DELETE CASCADE` in favour of **`ON DELETE RESTRICT`**. A single `DELETE FROM habits` used to erase all of that habit's history. RESTRICT rather than SET NULL because a log with a NULL `habit_id` is debris, not preserved history — archive habits (`active = 0`) instead; deletion must be deliberate.
-
 **Phase 3** — `003_meals.sql`
 - `foods` — nutrition stated per ONE serving; `serving_size` is a descriptive label; `active` soft-delete.
 - `meal_entries` — one table with a `kind ∈ {planned, eaten}` discriminator, `bucket ∈ {breakfast, lunch, dinner, snacks}`, `quantity` = servings.
   - `planned` rows JOIN `foods` live, so food edits flow through while you're still planning.
   - `eaten` rows are a **snapshot** (`food_name` + frozen per-serving nutrition), like `session_sets`. `food_id` is a soft pointer (`ON DELETE SET NULL`); the snapshot is the source of truth.
 - Adds `target_carbs_g`, `target_fat_g`, `target_fiber_g`, `target_sugar_g` to `settings`. Floor/ceiling **direction is not stored** — it's hardcoded in the rollup (one tunable place): calories ceiling, protein floor, carbs ceiling, fat floor, fiber floor, sugar ceiling.
+
+**Phase 4** — `004_habit_versions.sql`, `005_no_cascade_delete.sql`
+- `habit_versions` — append-only history of habit definitions; `UNIQUE(habit_id, effective_from)`. `habits` holds the *current* definition; versions are authoritative for any question about the past. Only scheduling-relevant edits create a version (a rename doesn't); two edits in one day upsert, since a day has one answer.
+- `005` rebuilds `habit_logs` and `habit_versions` to drop `ON DELETE CASCADE` in favour of **`ON DELETE RESTRICT`**. A single `DELETE FROM habits` used to erase all of that habit's history. RESTRICT rather than SET NULL because a log with a NULL `habit_id` is debris, not preserved history — archive habits (`active = 0`) instead; deletion must be deliberate.
 
 ## Streak rules (in `public/streaks.js`)
 One walker, several predicates — shared by the dashboard and the stats page so they can't disagree. Tunable in one place.

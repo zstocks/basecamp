@@ -213,6 +213,41 @@ button.danger:hover { background: var(--danger); color: var(--accent-text); bord
                    border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
 .hm-cell.rest    { background: var(--surface-hover); border-color: var(--border); }
 
+/* --- charts (public/chart.js) --- */
+.chart-wrap { margin-top: 0.75rem; }
+.chart { width: 100%; height: auto; display: block; overflow: visible; }
+
+/* preserveAspectRatio="none" stretches the viewBox, which would distort stroke
+   widths — vector-effect keeps them a constant screen width at any size. */
+.chart path, .chart line, .chart circle { vector-effect: non-scaling-stroke; }
+
+.ch-line { fill: none; stroke: var(--accent); stroke-width: 2;
+           stroke-linejoin: round; stroke-linecap: round; }
+.ch-avg  { fill: none; stroke: var(--text); stroke-width: 1.5; opacity: 0.55;
+           stroke-dasharray: 1 0; }
+.ch-dot  { fill: var(--accent); }
+.ch-grid { stroke: var(--border); stroke-width: 1; }
+.ch-goal { stroke: var(--warn); stroke-width: 1.5; stroke-dasharray: 5 4; }
+
+.ch-axis { fill: var(--text-muted); font-size: 11px; }
+.ch-goal-label { fill: var(--warn); font-size: 11px; }
+
+/* Range toggle (30d / 90d / 1y) */
+.range-toggle { display: inline-flex; gap: 0.25rem; }
+.range-toggle button {
+  font-size: 0.75rem; padding: 0.2rem 0.55rem;
+  background: var(--bg); color: var(--text-muted);
+  border: 1px solid var(--border); border-radius: 999px;
+  cursor: pointer;
+}
+.range-toggle button:hover { color: var(--text); border-color: var(--text-muted); }
+.range-toggle button.active {
+  background: var(--accent); color: var(--accent-text); border-color: var(--accent);
+}
+
+.stat-value.good { color: var(--accent); }
+.stat-value.bad  { color: var(--danger); }
+
 .hm-legend {
   display: flex; flex-wrap: wrap; gap: 0.9rem;
   margin-top: 0.75rem; font-size: 0.75rem; color: var(--text-muted);

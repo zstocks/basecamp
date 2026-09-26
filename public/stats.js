@@ -1,11 +1,12 @@
 import { api } from '/api.js';
 import { showError } from '/toast.js';
+import { lineChart } from '/chart.js';
 import {
   buildResolver, buildDays, walkStreak, longestStreak, completionRate, habitStats,
   summitPredicate, perfectPredicate, SUMMIT_THRESHOLD,
 } from '/streaks.js';
 
-const VALID_TABS = ['habits', 'workouts', 'diet'];
+const VALID_TABS = ['habits', 'body', 'workouts', 'diet'];
 const NUM_WEEKS = 12;
 const DOW_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];   // 0=Sun..6=Sat
 
@@ -19,6 +20,9 @@ async function init() {
   activateTab(tab);
   if (tab === 'habits') {
     await loadHabits();
+  }
+  if (tab === 'body') {
+    await loadBody();
   }
   if (tab === 'workouts') {
     await loadWorkouts();
@@ -37,6 +41,115 @@ function activateTab(tab) {
     document.getElementById(`section-${t}`).hidden = t !== tab;
     document.getElementById(`tab-${t}`).classList.toggle('active', t === tab);
   }
+}
+
+// --- body: weight trend vs goal, and water ---
+
+const AVG_WINDOW_DAYS = 7;
+let bodySettings = null;
+
+async function loadBody() {
+  bodySettings = await api.get('/api/settings');
+  bindRangeToggle();
+  await renderBody(90);
+}
+
+function bindRangeToggle() {
+  const wrap = document.getElementById('body-range');
+  wrap.addEventListener('click', async e => {
+    const btn = e.target.closest('button[data-days]');
+    if (!btn) return;
+    for (const b of wrap.querySelectorAll('button')) b.classList.toggle('active', b === btn);
+    await renderBody(Number(btn.dataset.days)).catch(showError);
+  });
+}
+
+async function renderBody(days) {
+  const to = new Date();
+  const from = new Date(to);
+  from.setDate(from.getDate() - (days - 1));
+
+  // The API already serves ranges, so this is one request per range change.
+  const rows = await api.get(`/api/body-metrics?from=${ymd(from)}&to=${ymd(to)}`);
+
+  renderWeight(rows, days);
+  renderWater(rows, days);
+}
+
+function renderWeight(rows, days) {
+  const goal = bodySettings?.goal_weight ?? null;
+  const series = rows
+    .filter(r => r.weight !== null && r.weight !== undefined)
+    .map(r => ({ date: r.date, value: r.weight }))
+    .sort((a, b) => (a.date < b.date ? -1 : 1));   // oldest first
+
+  lineChart(document.getElementById('weight-chart'), {
+    series,
+    goal,
+    goalLabel: 'goal',
+    average: AVG_WINDOW_DAYS,
+    unit: ' lb',
+    decimals: 1,
+  });
+
+  if (series.length === 0) {
+    setText('bd-current', '—');
+    setText('bd-change', '—');
+    setText('bd-togoal', '—');
+    document.getElementById('bd-hint').textContent =
+      `No weight logged in the last ${days} days. Log it on the dashboard and the trend appears here.`;
+    return;
+  }
+
+  const first = series[0].value;
+  const latest = series[series.length - 1].value;
+  const change = latest - first;
+
+  setText('bd-current', `${latest.toFixed(1)}`);
+  setText('bd-change', `${change > 0 ? '+' : ''}${change.toFixed(1)}`);
+  // Down is progress when the goal is below you, so colour by direction of
+  // travel toward the goal rather than by sign.
+  const changeEl = document.getElementById('bd-change');
+  changeEl.classList.toggle('good', goal !== null && Math.abs(latest - goal) < Math.abs(first - goal));
+  changeEl.classList.toggle('bad', goal !== null && Math.abs(latest - goal) > Math.abs(first - goal));
+
+  setText('bd-togoal', goal === null ? '—' : `${(latest - goal).toFixed(1)}`);
+
+  const avgNote = series.length > 2
+    ? ` The smoothed line is a ${AVG_WINDOW_DAYS}-day average — daily weight swings with water and food, so the trend is the signal.`
+    : '';
+  document.getElementById('bd-hint').textContent =
+    goal === null
+      ? `${series.length} entries over ${days} days. Set a goal weight in Settings to see it charted.${avgNote}`
+      : `${series.length} entries over ${days} days.${avgNote}`;
+}
+
+function renderWater(rows, days) {
+  const target = bodySettings?.target_water_ml ?? null;
+  const series = rows
+    .filter(r => r.water_ml !== null && r.water_ml !== undefined && r.water_ml > 0)
+    .map(r => ({ date: r.date, value: r.water_ml }))
+    .sort((a, b) => (a.date < b.date ? -1 : 1));
+
+  lineChart(document.getElementById('water-chart'), {
+    series,
+    goal: target,
+    goalLabel: 'target',
+    unit: ' ml',
+    decimals: 0,
+    height: 150,
+  });
+
+  const el = document.getElementById('bd-water-summary');
+  if (series.length === 0) {
+    el.textContent = `No water logged in the last ${days} days.`;
+    return;
+  }
+  const avg = series.reduce((s, p) => s + p.value, 0) / series.length;
+  const hit = target ? series.filter(p => p.value >= target).length : null;
+  el.textContent = target
+    ? `Averaging ${Math.round(avg)} ml on the ${series.length} days you logged — target hit ${hit} of ${series.length}.`
+    : `Averaging ${Math.round(avg)} ml across ${series.length} logged days. Set a water target in Settings to track it.`;
 }
 
 // --- habits ---
