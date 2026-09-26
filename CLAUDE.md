@@ -13,7 +13,6 @@ A personal health tracker (habits, body metrics, cravings, workouts, meals) buil
 Also shipped beyond the original plan: login rate limiting (`src/rateLimit.js` + an Nginx `limit_req` zone), a full favicon/PWA icon set and web manifest, and a `/health` endpoint used by the compose healthcheck.
 
 ### Known gaps (the honest list)
-- **No backups.** See the WAL warning under "Deploy target" — this is the top risk.
 - **Habits and Diet stats are unbuilt.** Two placeholder cards in `stats.html`.
 - **Cravings are write-only.** The dashboard POSTs to `/api/cravings` and nothing ever reads it back. There is a `GET /api/cravings` route with no UI behind it — you can log a craving but never see the pattern.
 - **No weight/trend history anywhere.** `body_metrics` accumulates but is only ever read for *today*. `goal_weight` is stored in settings and never compared against actuals. There are no charts in the app at all.
@@ -62,9 +61,10 @@ Also shipped beyond the original plan: login rate limiting (`src/rateLimit.js` +
 A day "summits" if completed_habits ÷ scheduled_habits ≥ 0.5 (with at least one scheduled habit). Days with zero scheduled = rest — neither extend nor break. Streak = consecutive non-broken days ending today. Tunable in one place. **Workouts and meals do not currently affect it.**
 
 ## What's next
-- **Step A — back up the database (do this first).** Nothing else matters if the data can vanish. See the WAL warning below.
-- **Step B — close the daily loop.** The app is feature-complete but logging stopped in early August; the remaining work is about making daily use frictionless rather than adding more surface area.
-- **Step C — finish Phase 4:** the Habits stats tab, the Diet stats tab, weight trend vs `goal_weight`, and a cravings review view.
+- ~~Step A — back up the database.~~ **Done 2026-09-26.** See "Backups" below.
+- **Step B — trends.** Weight vs `goal_weight`, the Habits stats tab, the Diet stats tab, and a cravings review view. Logging currently pays out nothing, which is the likeliest reason it stopped.
+  - Fold in: surface "last backup age" from `last-backup.json` on a page you see daily, so the app reports its own backup failures instead of waiting to be asked.
+- **Step C — refinement for ease of use.** Reduce the taps a normal day costs. The app is feature-complete; the remaining work is friction, not surface area.
 
 ## Deploy target
 - Hetzner CX22, Ubuntu 24.04, IP 5.78.195.72, SSH on port 2222 (alias `vps` configured).
@@ -74,14 +74,20 @@ A day "summits" if completed_habits ÷ scheduled_habits ≥ 0.5 (with at least o
 - Docker port binding: **`127.0.0.1:3005:3000`** — never `0.0.0.0` (bypasses UFW via Docker's iptables rules).
 - Multi-stage Dockerfile: Alpine build stage `apk add python3 make g++` + `npm rebuild better-sqlite3` (no musl prebuild exists), then a toolchain-free runtime stage.
 
-### Backing up: do NOT just copy basecamp.db
-The database runs in **WAL mode**, and the WAL is not checkpointed on any schedule. As of 2026-09-26, production `basecamp.db` was **4 KB (header only)** while `basecamp.db-wal` held **1.2 MB** — every row lived in the WAL. Copying `basecamp.db` alone was verified to yield a database with **zero tables**. The old "back up by copying the file" note in this doc was wrong and would have produced silently empty backups.
+### Backups — see `docs/BACKUP.md` for the restore runbook
+Automated since 2026-09-26. Daily snapshot at 03:30 and a weekly restore drill on Sundays at 04:00, both systemd timers on the **host** (not in the container, so they survive the app being broken or stopped). Off-site copy goes to Hetzner Storage Box sub-account `u613904-sub3` (base dir `/basecamp/`, key `/root/.ssh/box_basecamp`). Retention 14 daily / 8 weekly / 12 monthly; ~6 KB per snapshot.
 
-Use SQLite's own backup, which checkpoints correctly and is safe on a live DB:
+**Never back up by copying `basecamp.db`.** The database runs in **WAL mode**. On 2026-09-26 live `basecamp.db` was **4 KB (header only)** while `basecamp.db-wal` held **1.2 MB** — every row was in the WAL. Copying the `.db` alone was tested and restored to **zero tables**. Use `sqlite3 "$DB" ".backup out.db"` (online backup API, folds in the WAL, safe on a live database), or take **all three** of `.db`, `-wal`, `-shm` together.
 
-    docker exec basecamp node -e "const D=require('better-sqlite3');new D('/app/data/basecamp.db').backup('/app/data/backup.db')"
+- `scripts/backup.sh` — snapshot → `integrity_check` → assert every expected table exists and rows > 0 → gzip → retain → rsync → confirm the file is listed remotely.
+- `scripts/verify-backup.sh` — downloads the newest **off-site** copy and proves it restores; fails if it is over 48h old, so a stopped timer surfaces loudly.
+- `scripts/pre-deploy.sh` — local snapshot before `docker compose up` applies migrations. Invoked by a generic hook in `~/deploy.sh`.
+- rsync runs **without `--delete`** — the remote is append-only, so local corruption cannot replicate to the last surviving copy.
+- Verified end to end on 2026-09-26: restored-from-Storage-Box row counts matched live exactly across all 12 tables.
 
-or `sqlite3 basecamp.db ".backup out.db"`. If you ever copy files by hand, you must take **all three** of `basecamp.db`, `-wal`, and `-shm` together. There is currently **no crontab and no `~/backups` directory** on the VPS — backups are entirely unimplemented.
+**Nothing notifies you when a backup fails** — check `systemctl list-timers 'basecamp-*'` or `journalctl -u basecamp-backup.service`. Planned fix is in Step B.
+
+⚠️ **`~/deploy.sh` on the VPS is not version-controlled.** It gained a generic pre-deploy hook (runs `scripts/pre-deploy.sh` if present and executable; apps without one are unaffected). Original saved at `~/deploy.sh.bak-2026-09-26`. Deploying basecamp now prompts for a sudo password at the hook.
 
 ## Developer preferences
 - Concept-first explanations with rationale before code. Surface tradeoffs for sign-off; don't decide silently.
