@@ -1,6 +1,13 @@
 import { db } from '../db.js';
+import { recordVersion, differsFrom } from './habitVersions.js';
 
 const COLS = 'id, name, note, cadence_type, cadence_count, cadence_days, active, created_at, updated_at';
+
+// Today per the server clock. effective_from is a date, not a timestamp: a
+// habit edited at any hour takes effect for that whole day.
+function serverToday() {
+  return db.prepare(`SELECT date('now') AS d`).get().d;
+}
 
 export function listHabits() {
   return db.prepare(`SELECT ${COLS} FROM habits ORDER BY active DESC, name ASC`).all();
@@ -18,12 +25,27 @@ export function createHabit({ name, note, cadence_type, cadence_count, cadence_d
     throw Object.assign(new Error('cadence_type must be daily, weekly, or weekdays'), { status: 400 });
   }
 
-  const result = db.prepare(`
-    INSERT INTO habits (name, note, cadence_type, cadence_count, cadence_days)
-    VALUES (?, ?, ?, ?, ?)
-  `).run(name, note ?? null, cadence_type, cadence_count ?? null, cadence_days ?? null);
+  // The habit and its opening version must land together — a habit with no
+  // version has no history to read, so this is one transaction, not two writes.
+  const create = db.transaction(() => {
+    const result = db.prepare(`
+      INSERT INTO habits (name, note, cadence_type, cadence_count, cadence_days)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(name, note ?? null, cadence_type, cadence_count ?? null, cadence_days ?? null);
 
-  return getHabit(result.lastInsertRowid);
+    recordVersion({
+      habit_id: result.lastInsertRowid,
+      effective_from: serverToday(),
+      cadence_type,
+      cadence_count,
+      cadence_days,
+      active: 1,
+    });
+
+    return result.lastInsertRowid;
+  });
+
+  return getHabit(create());
 }
 
 export function updateHabit(id, fields) {
@@ -46,6 +68,24 @@ export function updateHabit(id, fields) {
   sets.push(`updated_at = datetime('now')`);
   values.push(id);
 
-  db.prepare(`UPDATE habits SET ${sets.join(', ')} WHERE id = ?`).run(...values);
-  return getHabit(id);
+  const update = db.transaction(() => {
+    db.prepare(`UPDATE habits SET ${sets.join(', ')} WHERE id = ?`).run(...values);
+    const next = getHabit(id);
+
+    // Only scheduling-relevant changes get a version. Renaming a habit or
+    // editing its note must not create one, or history fills with noise.
+    if (differsFrom(existing, next)) {
+      recordVersion({
+        habit_id: id,
+        effective_from: serverToday(),
+        cadence_type: next.cadence_type,
+        cadence_count: next.cadence_count,
+        cadence_days: next.cadence_days,
+        active: next.active,
+      });
+    }
+    return next;
+  });
+
+  return update();
 }

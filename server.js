@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join, extname } from 'node:path';
 import * as habitsRepo from './src/habits.js';
 import * as logsRepo from './src/habitLogs.js';
+import * as versionsRepo from './src/habitVersions.js';
 import * as metricsRepo from './src/bodyMetrics.js';
 import * as cravingsRepo from './src/cravings.js';
 import * as settingsRepo from './src/settings.js';
@@ -109,6 +110,14 @@ async function handleApi(req, res, pathname) {
   }
 
   // GET /api/habit-logs?date=YYYY-MM-DD
+  // GET /api/habit-versions → every habit definition change, oldest first.
+  // The client resolves "was this habit scheduled on date D?" against these
+  // rather than against today's definition, so editing a habit never rewrites
+  // whether past days summited.
+  if (pathname === '/api/habit-versions' && req.method === 'GET') {
+    return sendJson(res, 200, versionsRepo.listHabitVersions());
+  }
+
   // GET /api/habit-logs?date=YYYY-MM-DD    → logs for one day
   // GET /api/habit-logs?from=...&to=...    → logs across an inclusive range
   if (pathname === '/api/habit-logs' && req.method === 'GET') {
