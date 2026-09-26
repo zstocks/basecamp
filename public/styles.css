@@ -203,6 +203,60 @@ button.danger:hover { background: var(--danger); color: var(--accent-text); bord
 }
 .hm-cell.done { background: var(--accent); border-color: var(--accent); }
 .hm-cell.future { background: transparent; border-color: transparent; }
+
+/* Habit consistency states. A summit day is a dimmed accent so a wall of
+   perfect days reads as clearly better at a glance, not merely different. */
+.hm-cell.perfect { background: var(--warn); border-color: var(--warn); }
+.hm-cell.summit  { background: color-mix(in srgb, var(--accent) 65%, transparent);
+                   border-color: color-mix(in srgb, var(--accent) 65%, transparent); }
+.hm-cell.broken  { background: color-mix(in srgb, var(--danger) 30%, transparent);
+                   border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
+.hm-cell.rest    { background: var(--surface-hover); border-color: var(--border); }
+
+.hm-legend {
+  display: flex; flex-wrap: wrap; gap: 0.9rem;
+  margin-top: 0.75rem; font-size: 0.75rem; color: var(--text-muted);
+}
+.hm-legend span { display: inline-flex; align-items: center; gap: 0.35rem; }
+.hm-legend .sw { width: 0.7rem; height: 0.7rem; border-radius: 3px; display: inline-block; }
+.hm-legend .sw.perfect { background: var(--warn); }
+.hm-legend .sw.summit  { background: color-mix(in srgb, var(--accent) 65%, transparent); }
+.hm-legend .sw.broken  { background: color-mix(in srgb, var(--danger) 30%, transparent); }
+.hm-legend .sw.rest    { background: var(--surface-hover); border: 1px solid var(--border); }
+
+/* Streak summary tiles */
+.stat-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  gap: 0.75rem;
+}
+.stat {
+  display: flex; flex-direction: column; gap: 0.15rem;
+  padding: 0.75rem;
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+}
+.stat-value { font-size: 1.6rem; font-weight: 700; color: var(--accent); line-height: 1; }
+.stat-value.gold { color: var(--warn); }
+.stat-label { font-size: 0.75rem; color: var(--text-muted); }
+
+/* Per-habit breakdown rows */
+.habit-breakdown { display: flex; flex-direction: column; gap: 0.6rem; }
+.hb-row {
+  display: grid;
+  grid-template-columns: minmax(6rem, 1fr) minmax(3rem, 6rem) auto auto;
+  align-items: center; gap: 0.75rem;
+}
+.hb-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hb-name.archived { color: var(--text-muted); font-style: italic; }
+.hb-bar { height: 0.5rem; background: var(--bg); border: 1px solid var(--border);
+          border-radius: 999px; overflow: hidden; }
+.hb-fill { height: 100%; background: var(--accent); }
+.hb-figures { font-size: 0.8rem; color: var(--text-muted); white-space: nowrap; }
+.hb-streaks { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; }
+
+@media (max-width: 480px) {
+  .hb-row { grid-template-columns: 1fr auto; row-gap: 0.3rem; }
+  .hb-bar { grid-column: 1 / -1; }
+}
 .hm-cell.clickable { cursor: pointer; }
 .hm-cell.clickable:hover { border-color: var(--text-muted); }
 .hm-cell.selected { outline: 2px solid var(--text); outline-offset: 1px; }

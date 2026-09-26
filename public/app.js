@@ -2,7 +2,7 @@ import { api } from '/api.js';
 import { showError, showSuccess } from '/toast.js';
 import { renderRollup } from '/rollup.js';
 import {
-  buildResolver, scheduledOn, visibleOn,
+  buildResolver, visibleOn, buildDays, groupByDate,
   walkStreak, summitPredicate, perfectPredicate, habitPredicate,
 } from '/streaks.js';
 
@@ -65,33 +65,8 @@ async function loadData() {
   todaysSessions = sessionsRes;
   mealDay = mealsRes;
 
-  dayData = buildDays(dates, logRows);
+  dayData = buildDays(dates, logRows, habits, resolver);
   todaysLogs = groupByDate(logRows).get(today) ?? [];
-}
-
-function groupByDate(logRows) {
-  const byDate = new Map();
-  for (const row of logRows) {
-    if (!byDate.has(row.date)) byDate.set(row.date, []);
-    byDate.get(row.date).push(row);
-  }
-  return byDate;
-}
-
-// Turn raw log rows into one summary per date. Dates come in newest-first and
-// come back in the same order.
-function buildDays(dates, logRows) {
-  const byDate = groupByDate(logRows);
-  return dates.map(date => {
-    const logs = byDate.get(date) ?? [];
-    const dow = new Date(date + 'T00:00:00').getDay();
-    // Scheduling comes from the definition in effect ON THAT DATE, so editing a
-    // habit today cannot change whether an earlier day summited.
-    const scheduled = scheduledOn(habits, resolver, date);
-    const doneIds = new Set(logs.filter(l => l.done === 1).map(l => l.habit_id));
-    const doneCount = scheduled.filter(h => doneIds.has(h.id)).length;
-    return { date, dow, scheduled, doneIds, doneCount, logCount: logs.length };
-  });
 }
 
 function renderTodayHeader() {
@@ -497,7 +472,7 @@ async function loadOlderDays(beforeDate) {
   for (let d = new Date(end); ymd(d) >= from; d.setDate(d.getDate() - 1)) {
     dates.push(ymd(d));
   }
-  return buildDays(dates, rows);
+  return buildDays(dates, rows, habits, resolver);
 }
 
 function setNumber(elId, n) {

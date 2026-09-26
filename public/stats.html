@@ -39,10 +39,47 @@
       <a href="/stats.html?tab=diet" id="tab-diet">Diet</a>
     </nav>
 
-    <section class="card" id="section-habits" hidden>
-      <h2>Habit stats</h2>
-      <p class="empty">Coming soon.</p>
-    </section>
+    <div id="section-habits" hidden>
+      <section class="card">
+        <h2>Streaks</h2>
+        <div class="stat-grid">
+          <div class="stat">
+            <span class="stat-value" id="hb-summit-current">—</span>
+            <span class="stat-label">current streak</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value" id="hb-summit-best">—</span>
+            <span class="stat-label">longest streak</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value gold" id="hb-perfect-current">—</span>
+            <span class="stat-label">perfect now</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value gold" id="hb-perfect-best">—</span>
+            <span class="stat-label">longest perfect</span>
+          </div>
+        </div>
+        <p class="hint" id="hb-rule"></p>
+      </section>
+
+      <section class="card">
+        <h2>Consistency</h2>
+        <p class="hint" id="hb-summary">Loading…</p>
+        <div class="heatmap" id="habit-heatmap"></div>
+        <div class="hm-legend">
+          <span><i class="sw perfect"></i>perfect</span>
+          <span><i class="sw summit"></i>summit</span>
+          <span><i class="sw broken"></i>missed</span>
+          <span><i class="sw rest"></i>rest</span>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Per habit</h2>
+        <div class="habit-breakdown" id="habit-breakdown"></div>
+      </section>
+    </div>
 
     <div id="section-workouts" hidden>
       <section class="card">
@@ -65,7 +102,7 @@
 
     <section class="card" id="section-diet" hidden>
       <h2>Diet stats</h2>
-      <p class="empty">Coming in Phase 3.</p>
+      <p class="empty">Coming soon — calories and macros against your targets over time.</p>
     </section>
   </main>
 

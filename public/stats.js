@@ -1,17 +1,25 @@
 import { api } from '/api.js';
 import { showError } from '/toast.js';
+import {
+  buildResolver, buildDays, walkStreak, longestStreak, completionRate, habitStats,
+  summitPredicate, perfectPredicate, SUMMIT_THRESHOLD,
+} from '/streaks.js';
 
 const VALID_TABS = ['habits', 'workouts', 'diet'];
 const NUM_WEEKS = 12;
 const DOW_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];   // 0=Sun..6=Sat
 
 let sessionsByDate = new Map();   // 'YYYY-MM-DD' -> [session, ...]
+let habitDays = new Map();        // 'YYYY-MM-DD' -> day summary, for the habit heatmap
 
 init().catch(showError);
 
 async function init() {
   const tab = currentTab();
   activateTab(tab);
+  if (tab === 'habits') {
+    await loadHabits();
+  }
   if (tab === 'workouts') {
     await loadWorkouts();
     await loadExercisePicker();
@@ -29,6 +37,169 @@ function activateTab(tab) {
     document.getElementById(`section-${t}`).hidden = t !== tab;
     document.getElementById(`tab-${t}`).classList.toggle('active', t === tab);
   }
+}
+
+// --- habits ---
+
+async function loadHabits() {
+  const today = new Date();
+  const startSunday = weekStart(today, NUM_WEEKS);
+
+  const [habits, versions, logRows] = await Promise.all([
+    api.get('/api/habits'),
+    api.get('/api/habit-versions'),
+    api.get(`/api/habit-logs?from=${ymd(startSunday)}&to=${ymd(today)}`),
+  ]);
+
+  // Newest first, matching the dashboard, so the same streak walkers apply.
+  const dates = [];
+  for (let d = new Date(today); ymd(d) >= ymd(startSunday); d.setDate(d.getDate() - 1)) {
+    dates.push(ymd(d));
+  }
+
+  const resolver = buildResolver(versions);
+  const days = buildDays(dates, logRows, habits, resolver);
+  habitDays = new Map(days.map(d => [d.date, d]));
+
+  renderHabitStreaks(days);
+  renderHabitHeatmap(startSunday, today);
+  renderHabitBreakdown(habits, days);
+}
+
+function renderHabitStreaks(days) {
+  setText('hb-summit-current', walkStreak(days, summitPredicate).streak);
+  setText('hb-summit-best', longestStreak(days, summitPredicate));
+  setText('hb-perfect-current', walkStreak(days, perfectPredicate).streak);
+  setText('hb-perfect-best', longestStreak(days, perfectPredicate));
+
+  document.getElementById('hb-rule').textContent =
+    `A day summits at ${Math.round(SUMMIT_THRESHOLD * 100)}% of scheduled habits; `
+    + `perfect means all of them. Days with nothing scheduled are rest — they neither `
+    + `extend nor break a run. Measured over the last ${NUM_WEEKS} weeks.`;
+
+  const rate = completionRate(days);
+  const scheduledDays = days.filter(d => d.scheduled.length > 0).length;
+  document.getElementById('hb-summary').textContent = rate === null
+    ? 'No habits scheduled in this window yet.'
+    : `${pct(rate)} of scheduled habits completed across ${scheduledDays} active day${scheduledDays === 1 ? '' : 's'}.`;
+}
+
+function renderHabitHeatmap(startSunday, today) {
+  const hm = document.getElementById('habit-heatmap');
+  hm.innerHTML = '';
+  hm.appendChild(dowHeader());
+
+  const todayStr = ymd(today);
+  for (let w = 0; w < NUM_WEEKS; w++) {
+    const week = document.createElement('div');
+    week.className = 'hm-week';
+    for (let d = 0; d < 7; d++) {
+      const date = new Date(startSunday);
+      date.setDate(date.getDate() + w * 7 + d);
+      week.appendChild(habitCell(ymd(date), todayStr));
+    }
+    hm.appendChild(week);
+  }
+}
+
+function habitCell(ds, todayStr) {
+  const el = document.createElement('div');
+  el.className = 'hm-cell';
+
+  if (ds > todayStr) {                      // lexicographic works for YYYY-MM-DD
+    el.classList.add('future');
+    return el;
+  }
+
+  const day = habitDays.get(ds);
+  if (!day || day.scheduled.length === 0) {
+    el.classList.add('rest');
+    el.title = `${ds} — rest day, nothing scheduled`;
+    return el;
+  }
+
+  const ratio = day.doneCount / day.scheduled.length;
+  el.classList.add(ratio === 1 ? 'perfect' : ratio >= SUMMIT_THRESHOLD ? 'summit' : 'broken');
+  el.title = `${ds} — ${day.doneCount}/${day.scheduled.length} habits (${pct(ratio)})`;
+  return el;
+}
+
+function renderHabitBreakdown(habits, days) {
+  const wrap = document.getElementById('habit-breakdown');
+  wrap.innerHTML = '';
+
+  // Only habits that were actually scheduled at some point in the window —
+  // one archived last year shouldn't clutter the list with a 0/0 row.
+  const rows = habits
+    .map(h => ({ habit: h, stats: habitStats(h.id, days) }))
+    .filter(r => r.stats.scheduled > 0);
+
+  if (rows.length === 0) {
+    const p = document.createElement('p');
+    p.className = 'empty';
+    p.textContent = 'No habits were scheduled in this window yet.';
+    wrap.appendChild(p);
+    return;
+  }
+
+  rows.sort((a, b) => (b.stats.rate ?? 0) - (a.stats.rate ?? 0));
+
+  for (const { habit, stats } of rows) {
+    const row = document.createElement('div');
+    row.className = 'hb-row';
+
+    const name = document.createElement('span');
+    name.className = 'hb-name';
+    name.textContent = habit.name;          // textContent — XSS-safe
+    if (!habit.active) name.classList.add('archived');
+
+    const bar = document.createElement('div');
+    bar.className = 'hb-bar';
+    const fill = document.createElement('div');
+    fill.className = 'hb-fill';
+    fill.style.width = `${Math.round((stats.rate ?? 0) * 100)}%`;
+    bar.appendChild(fill);
+
+    const figures = document.createElement('span');
+    figures.className = 'hb-figures';
+    figures.textContent = `${pct(stats.rate)} · ${stats.done}/${stats.scheduled}`;
+
+    const streak = document.createElement('span');
+    streak.className = 'hb-streaks';
+    streak.textContent = `now ${stats.current} · best ${stats.longest}`;
+    streak.title = 'Current run · longest run in this window';
+
+    row.append(name, bar, figures, streak);
+    wrap.appendChild(row);
+  }
+}
+
+// Sunday, `weeks` weeks back — the top-left cell of a heatmap.
+function weekStart(today, weeks) {
+  const d = new Date(today);
+  d.setDate(d.getDate() - d.getDay() - (weeks - 1) * 7);
+  return d;
+}
+
+function dowHeader() {
+  const head = document.createElement('div');
+  head.className = 'hm-head';
+  for (const l of DOW_LABELS) {
+    const c = document.createElement('span');
+    c.className = 'hm-dow';
+    c.textContent = l;
+    head.appendChild(c);
+  }
+  return head;
+}
+
+function setText(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value;
+}
+
+function pct(rate) {
+  return rate === null ? '—' : `${Math.round(rate * 100)}%`;
 }
 
 // --- workout consistency heatmap ---

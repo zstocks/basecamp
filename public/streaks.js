@@ -75,6 +75,32 @@ export function visibleOn(habits, resolver, date) {
   });
 }
 
+// ---- turning raw log rows into per-day summaries ----
+
+export function groupByDate(logRows) {
+  const byDate = new Map();
+  for (const row of logRows) {
+    if (!byDate.has(row.date)) byDate.set(row.date, []);
+    byDate.get(row.date).push(row);
+  }
+  return byDate;
+}
+
+// Dates come in newest-first and come back in the same order. Lives here rather
+// than on either page so the dashboard and the stats page cannot drift apart on
+// what "scheduled" or "done" means for a given day.
+export function buildDays(dates, logRows, habits, resolver) {
+  const byDate = groupByDate(logRows);
+  return dates.map(date => {
+    const logs = byDate.get(date) ?? [];
+    const dow = new Date(date + 'T00:00:00').getDay();
+    const scheduled = scheduledOn(habits, resolver, date);
+    const doneIds = new Set(logs.filter(l => l.done === 1).map(l => l.habit_id));
+    const doneCount = scheduled.filter(h => doneIds.has(h.id)).length;
+    return { date, dow, scheduled, doneIds, doneCount, logCount: logs.length };
+  });
+}
+
 // ---- streaks ----
 
 // Walk days newest-first. A predicate returns:
@@ -110,6 +136,54 @@ export function habitPredicate(habitId) {
   return day => {
     if (!day.scheduled.some(h => h.id === habitId)) return null;
     return day.doneIds.has(habitId);
+  };
+}
+
+// ---- aggregates for the stats page ----
+
+// Best run anywhere in the supplied days, not just the one ending today.
+// Rest days bridge here too, exactly as they do for a current streak.
+export function longestStreak(days, predicate) {
+  let best = 0;
+  let run = 0;
+  for (const day of days) {
+    const verdict = predicate(day);
+    if (verdict === null) continue;
+    if (verdict === false) { run = 0; continue; }
+    run++;
+    if (run > best) best = run;
+  }
+  return best;
+}
+
+// Overall completion across every scheduled habit-day in the window.
+// null when nothing was ever scheduled — "0%" would be a lie.
+export function completionRate(days) {
+  let scheduled = 0;
+  let done = 0;
+  for (const day of days) {
+    scheduled += day.scheduled.length;
+    done += day.doneCount;
+  }
+  return scheduled ? done / scheduled : null;
+}
+
+// Per-habit record over the window: only days it was actually scheduled count
+// toward the rate, so a Tue/Thu habit isn't punished for the other five days.
+export function habitStats(habitId, days) {
+  let scheduled = 0;
+  let done = 0;
+  for (const day of days) {
+    if (!day.scheduled.some(h => h.id === habitId)) continue;
+    scheduled++;
+    if (day.doneIds.has(habitId)) done++;
+  }
+  return {
+    scheduled,
+    done,
+    rate: scheduled ? done / scheduled : null,
+    current: walkStreak(days, habitPredicate(habitId)).streak,
+    longest: longestStreak(days, habitPredicate(habitId)),
   };
 }
 
