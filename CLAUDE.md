@@ -17,7 +17,7 @@ Also shipped beyond the original plan: login rate limiting (`src/rateLimit.js` +
 - **Cravings are write-only.** The dashboard POSTs to `/api/cravings` and nothing ever reads it back. There is a `GET /api/cravings` route with no UI behind it — you can log a craving but never see the pattern.
 - **No weight/trend history anywhere.** `body_metrics` accumulates but is only ever read for *today*. `goal_weight` is stored in settings and never compared against actuals. There are no charts in the app at all.
 - **Workouts and meals don't feed the streak.** The streak is habits-only (see "Streak rule").
-- **No tests.** No test script, no test files.
+- **Test coverage is thin.** `npm test` runs `test/streaks.test.js` (11 tests, node's built-in runner, no dependencies) covering the scheduling and streak rules. Nothing else is covered — the data layer and HTTP routes have no tests.
 - **The local dev DB is stale** — it sits at migration `001` while production is at `003`. Starting the server locally will auto-apply `002` and `003`; expect that on first run.
 - **Dates are client-derived** (browser-local `ymd()`), while server defaults use `datetime('now')` (UTC). No `TZ` is set in compose. Harmless so far because the client supplies dates on writes, but worth knowing before adding server-side date logic.
 
@@ -49,6 +49,10 @@ Also shipped beyond the original plan: login rate limiting (`src/rateLimit.js` +
 **Phase 2** — `002_workouts.sql`
 - `workout_templates`, `template_exercises` (ordered by `position`, optional targets), `workout_schedule` (template → weekday, `UNIQUE(template_id, weekday)`), `workout_sessions` (`UNIQUE(date, template_id)`; `completed` is a flag, not mere row existence, so it can be un-checked; `template_id` is `ON DELETE SET NULL` so history survives template deletion), `session_sets`.
 - **`session_sets.exercise_name` is text, not a FK to `template_exercises`** — deliberate: history is a snapshot, immune to template edits/deletes.
+
+**Phase 4** — `004_habit_versions.sql`, `005_no_cascade_delete.sql`
+- `habit_versions` — append-only history of habit definitions; `UNIQUE(habit_id, effective_from)`. `habits` holds the *current* definition; versions are authoritative for any question about the past. Only scheduling-relevant edits create a version (a rename doesn't); two edits in one day upsert, since a day has one answer.
+- `005` rebuilds `habit_logs` and `habit_versions` to drop `ON DELETE CASCADE` in favour of **`ON DELETE RESTRICT`**. A single `DELETE FROM habits` used to erase all of that habit's history. RESTRICT rather than SET NULL because a log with a NULL `habit_id` is debris, not preserved history — archive habits (`active = 0`) instead; deletion must be deliberate.
 
 **Phase 3** — `003_meals.sql`
 - `foods` — nutrition stated per ONE serving; `serving_size` is a descriptive label; `active` soft-delete.
